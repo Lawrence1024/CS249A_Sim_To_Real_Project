@@ -43,7 +43,7 @@ class applyController(RobotAction):
     def applyTo(self, obj, sim):
         obj.move(sim, self.command)
 
-class setMoveWheeled(WheeledRobotAction):
+class applyWheeledController(WheeledRobotAction):
 
     def __init__(self, throttle=0, steering=0):
         #if not -1 <= throttle <= 1.0:
@@ -55,7 +55,7 @@ class setMoveWheeled(WheeledRobotAction):
         obj.move(sim, self.throttle, self.steering)
 
 
-class setMovePickPlace(ManipulatorRobotAction):
+class applyPickPlaceController(ManipulatorRobotAction):
 
     def __init__(self, target_object, goal_position):
         self.target_object = target_object
@@ -64,7 +64,7 @@ class setMovePickPlace(ManipulatorRobotAction):
     def applyTo(self, obj, sim):
         obj.move(sim, self.target_object, self.goal_position)
 
-class setMoveHolonomic(HolonomicRobotAction):
+class applyHolonomicController(HolonomicRobotAction):
 
     def __init__(self, forward_speed=0, lateral_speed=0, yaw_speed=0):
         self.forward_speed = forward_speed

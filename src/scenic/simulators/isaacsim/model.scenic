@@ -196,47 +196,6 @@ class Franka(IsaacSimRobot, _ManipulatorRobot):
         )
         self._franka.gripper.set_joint_positions(self._franka.gripper.joint_opened_positions)
 
-# Work in Progress
-class RidgebackFranka(IsaacSimRobot, _WheeledRobot):
-
-    def move(self, sim, throttle=0, steering=0):
-        from omni.isaac.core.utils.types import ArticulationAction
-        wheeled_robot = sim.world.scene.get_object(self.name)
-        action = ArticulationAction(
-            joint_velocities=[throttle, steering],  
-            joint_indices=[9, 6]
-        )
-        wheeled_robot.apply_action(action)
-
-    def create(self):
-        from isaacsim.robot.wheeled_robots.controllers.differential_controller import DifferentialController
-        from isaacsim.robot.wheeled_robots.robots import WheeledRobot
-        from isaacsim.core.api.materials import PreviewSurface
-        from isaacsim.storage.native import get_assets_root_path
-
-        assets_root_path = get_assets_root_path()
-        ridgeback_franka_path = assets_root_path + "/Isaac/Robots/Clearpath/RidgebackFranka/ridgeback_franka.usd"
-        prim_path = f"/World/{self.name}"
-
-        prim = SingleArticulation(
-            prim_path=prim_path, 
-            name=self.name,
-            #create_robot=True,
-            orientation=scenicToIsaacSimOrientation(self.orientation, initial_rotation=[0, 0, 0]),
-            position=self.position,
-            usd_path=ridgeback_franka_path,
-            #wheel_dof_names=["dummy_base_prismatic_x_joint", "dummy_base_revolute_z_joint"]
-        )
-        
-        if self.color:
-            material = PreviewSurface(
-            prim_path=f"/World/material/{self.name}",  
-            color=np.array(self.color) if self.color else None)
-
-            prim.apply_visual_material(material)
-
-        return prim
-
 class Create3(IsaacSimRobot, _WheeledRobot):
 
     shape: CylinderShape()
@@ -372,7 +331,6 @@ if globalParameters.environmentUSDPath:
     with open(environmentInfoPath, "r") as inFile:
 
         scene = trimesh.load(localPath(environmentMeshPath))
-
         meshData = json.load(inFile)
 
         for node_name in scene.graph.nodes_geometry:
@@ -390,8 +348,9 @@ if globalParameters.environmentUSDPath:
             if isPlanar(mesh): 
                 mesh = planeToMesh(mesh)
 
+            # just scales by 1/100, this should be updated to check the units
             newObj = new IsaacSimPreexisting at world_center, 
-                        with shape MeshShape(repairMesh(mesh.apply_scale(.01))), # scale by 1/100
+                        with shape MeshShape(repairMesh(mesh.apply_scale(.01))), 
                         with name path,
                         facing (yaw, pitch, roll)
 

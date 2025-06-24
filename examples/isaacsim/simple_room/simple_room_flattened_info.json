@@ -1,0 +1,182 @@
+{
+  "prim_0": {
+    "full_path": "/Root/Floor/SM_Template_Map_Floor"
+  },
+  "prim_1": {
+    "full_path": "/Root/Floor2/SM_Template_Map_Floor"
+  },
+  "prim_2": {
+    "full_path": "/Root/Floor3/SM_Template_Map_Floor"
+  },
+  "prim_3": {
+    "full_path": "/Root/Floor4/SM_Template_Map_Floor"
+  },
+  "prim_4": {
+    "full_path": "/Root/Floor5/SM_Template_Map_Floor"
+  },
+  "prim_5": {
+    "full_path": "/Root/Towel_Room01_floor_bottom_218/Towel_Room01_floor_bottom"
+  },
+  "prim_6": {
+    "full_path": "/Root/Towel_Room01_floor_rim_back001_222/Towel_Room01_floor_rim_back001"
+  },
+  "prim_7": {
+    "full_path": "/Root/Towel_Room01_floor_rim_back_220/Towel_Room01_floor_rim_back"
+  },
+  "prim_8": {
+    "full_path": "/Root/Towel_Room01_floor_rim_corner001_226/Towel_Room01_floor_rim_corner001"
+  },
+  "prim_9": {
+    "full_path": "/Root/Towel_Room01_floor_rim_corner002_228/Towel_Room01_floor_rim_corner002"
+  },
+  "prim_10": {
+    "full_path": "/Root/Towel_Room01_floor_rim_corner003_230/Towel_Room01_floor_rim_corner003"
+  },
+  "prim_11": {
+    "full_path": "/Root/Towel_Room01_floor_rim_corner004_232/Towel_Room01_floor_rim_corner004"
+  },
+  "prim_12": {
+    "full_path": "/Root/Towel_Room01_floor_rim_corner005_234/Towel_Room01_floor_rim_corner005"
+  },
+  "prim_13": {
+    "full_path": "/Root/Towel_Room01_floor_rim_corner006_236/Towel_Room01_floor_rim_corner006"
+  },
+  "prim_14": {
+    "full_path": "/Root/Towel_Room01_floor_rim_corner007_238/Towel_Room01_floor_rim_corner007"
+  },
+  "prim_15": {
+    "full_path": "/Root/Towel_Room01_floor_rim_corner_224/Towel_Room01_floor_rim_corner"
+  },
+  "prim_16": {
+    "full_path": "/Root/Towel_Room01_floor_rim_front_center001_242/Towel_Room01_floor_rim_front_center001"
+  },
+  "prim_17": {
+    "full_path": "/Root/Towel_Room01_floor_rim_front_center_240/Towel_Room01_floor_rim_front_center"
+  },
+  "prim_18": {
+    "full_path": "/Root/Towel_Room01_floor_rim_front_center_side001_246/Towel_Room01_floor_rim_front_center_side001"
+  },
+  "prim_19": {
+    "full_path": "/Root/Towel_Room01_floor_rim_front_center_side002_248/Towel_Room01_floor_rim_front_center_side002"
+  },
+  "prim_20": {
+    "full_path": "/Root/Towel_Room01_floor_rim_front_center_side003_250/Towel_Room01_floor_rim_front_center_side003"
+  },
+  "prim_21": {
+    "full_path": "/Root/Towel_Room01_floor_rim_front_center_side_244/Towel_Room01_floor_rim_front_center_side"
+  },
+  "prim_22": {
+    "full_path": "/Root/Towel_Room01_floor_rim_side001_254/Towel_Room01_floor_rim_side001"
+  },
+  "prim_23": {
+    "full_path": "/Root/Towel_Room01_floor_rim_side002_256/Towel_Room01_floor_rim_side002"
+  },
+  "prim_24": {
+    "full_path": "/Root/Towel_Room01_floor_rim_side003_258/Towel_Room01_floor_rim_side003"
+  },
+  "prim_25": {
+    "full_path": "/Root/Towel_Room01_floor_rim_side_252/Towel_Room01_floor_rim_side"
+  },
+  "prim_26": {
+    "full_path": "/Root/Towel_Room01_floor_top_260/Towel_Room01_floor_top"
+  },
+  "prim_27": {
+    "full_path": "/Root/Towel_Room01_florr_edge001_264/Towel_Room01_florr_edge001"
+  },
+  "prim_28": {
+    "full_path": "/Root/Towel_Room01_florr_edge_262/Towel_Room01_florr_edge"
+  },
+  "prim_29": {
+    "full_path": "/Root/Towel_Room01_lamp_266/Towel_Room01_lamp"
+  },
+  "prim_30": {
+    "full_path": "/Root/Towel_Room01_lamp_frame_268/Towel_Room01_lamp_frame"
+  },
+  "prim_31": {
+    "full_path": "/Root/Towel_Room01_wall_back001_274/Towel_Room01_wall_back001"
+  },
+  "prim_32": {
+    "full_path": "/Root/Towel_Room01_wall_back_272/Towel_Room01_wall_back"
+  },
+  "prim_33": {
+    "full_path": "/Root/Towel_Room01_wall_corner001_278/Towel_Room01_wall_corner001"
+  },
+  "prim_34": {
+    "full_path": "/Root/Towel_Room01_wall_corner002_280/Towel_Room01_wall_corner002"
+  },
+  "prim_35": {
+    "full_path": "/Root/Towel_Room01_wall_corner003_282/Towel_Room01_wall_corner003"
+  },
+  "prim_36": {
+    "full_path": "/Root/Towel_Room01_wall_corner_276/Towel_Room01_wall_corner"
+  },
+  "prim_37": {
+    "full_path": "/Root/Towel_Room01_wall_side001_286/Towel_Room01_wall_side001"
+  },
+  "prim_38": {
+    "full_path": "/Root/Towel_Room01_wall_side_284/Towel_Room01_wall_side"
+  },
+  "prim_39": {
+    "full_path": "/Root/Towel_Room01_window1_290/Towel_Room01_window1"
+  },
+  "prim_40": {
+    "full_path": "/Root/Towel_Room01_window_288/Towel_Room01_window"
+  },
+  "prim_41": {
+    "full_path": "/Root/Towel_Room01_window_frame_bottom001_292/Towel_Room01_window_frame_bottom001"
+  },
+  "prim_42": {
+    "full_path": "/Root/Towel_Room01_window_frame_bottom002_294/Towel_Room01_window_frame_bottom002"
+  },
+  "prim_43": {
+    "full_path": "/Root/Towel_Room01_window_frame_corner002_296/Towel_Room01_window_frame_corner002"
+  },
+  "prim_44": {
+    "full_path": "/Root/Towel_Room01_window_frame_corner004_298/Towel_Room01_window_frame_corner004"
+  },
+  "prim_45": {
+    "full_path": "/Root/Towel_Room01_window_frame_corner005_300/Towel_Room01_window_frame_corner005"
+  },
+  "prim_46": {
+    "full_path": "/Root/Towel_Room01_window_frame_corner006_302/Towel_Room01_window_frame_corner006"
+  },
+  "prim_47": {
+    "full_path": "/Root/Towel_Room01_window_frame_side001_304/Towel_Room01_window_frame_side001"
+  },
+  "prim_48": {
+    "full_path": "/Root/Towel_Room01_window_frame_side002_306/Towel_Room01_window_frame_side002"
+  },
+  "prim_49": {
+    "full_path": "/Root/Towel_Room01_wood_wall_008_322/Towel_Room01_wood_wall_008"
+  },
+  "prim_50": {
+    "full_path": "/Root/Towel_Room01_wood_wall_009_324/Towel_Room01_wood_wall_009"
+  },
+  "prim_51": {
+    "full_path": "/Root/Towel_Room01_wood_wall_308/Towel_Room01_wood_wall_1"
+  },
+  "prim_52": {
+    "full_path": "/Root/Towel_Room01_wood_wall_310/Towel_Room01_wood_wall_2"
+  },
+  "prim_53": {
+    "full_path": "/Root/Towel_Room01_wood_wall_312/Towel_Room01_wood_wall_3"
+  },
+  "prim_54": {
+    "full_path": "/Root/Towel_Room01_wood_wall_314/Towel_Room01_wood_wall_4"
+  },
+  "prim_55": {
+    "full_path": "/Root/Towel_Room01_wood_wall_316/Towel_Room01_wood_wall_5"
+  },
+  "prim_56": {
+    "full_path": "/Root/Towel_Room01_wood_wall_318/Towel_Room01_wood_wall_6"
+  },
+  "prim_57": {
+    "full_path": "/Root/Towel_Room01_wood_wall_320/Towel_Room01_wood_wall_7"
+  },
+  "prim_58": {
+    "full_path": "/Root/table_low_327/table_low"
+  },
+  "prim_59": {
+    "full_path": "/Root/GroundPlane/CollisionMesh"
+  }
+}

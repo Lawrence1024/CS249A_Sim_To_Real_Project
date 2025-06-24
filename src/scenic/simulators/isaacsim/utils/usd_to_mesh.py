@@ -48,7 +48,7 @@ async def convert(in_file, out_file, load_materials=False):
             break
     return success
 
-# Remove the ground plane (this NOT be done in environment files)
+# Remove the ground plane (NOT be done in environment files)
 def remove_ground_plane(file_path, output_path):
     stage = Usd.Stage.Open(file_path)
 
@@ -59,19 +59,15 @@ def remove_ground_plane(file_path, output_path):
     stage.GetRootLayer().Export(output_path)
 
 # Repair the mesh so that it is compatible as a Scenic Mesh
+# This is doesnt seem to do anything - I still have to repair in Scenic when its loaded
 def fix_mesh(model_path):
     mesh = trimesh.load(model_path)
-    print(mesh) 
     # if it is a scene, we need to combine individual geometry
     if isinstance(mesh, trimesh.Scene):
-        print("HELLO!, this is a scene")
         mesh = mesh.to_geometry()
-
     # repair the mesh 
     mesh = repairMesh(mesh)
-    #print(mesh.is_volume)
     mesh.export(model_path)
-
 
 def compute_bbox(prim):
     """
@@ -97,14 +93,12 @@ def decompose_matrix(mat):
 
     translate = mat.ExtractTranslation()
     scale = Gf.Vec3d(*(v.GetLength() for v in mat.ExtractRotationMatrix()))
-    #must remove scaling from mtx before calculating rotations
     mat.Orthonormalize()
-    #without reversed this seems to return angles in ZYX order
     rotate = Gf.Vec3d(*reversed(mat.ExtractRotation().Decompose(*reversed_ident_mtx)))
     return translate, rotate, scale
 
 
-def get_mesh_info(usd_path, output_path):
+def get_mesh_info(usd_path, output_path, folder):
     from pxr import UsdGeom
     import omni
     from isaacsim.core.utils.stage import open_stage
@@ -145,24 +139,25 @@ def get_mesh_info(usd_path, output_path):
         transforms[new_name]['position'] = np.array(pos).tolist()
 
         omni.usd.get_context().save_as_stage(output_path)
-        out_file = Path(usd_path).stem + "_info.json"
+        out_file = folder + "_converted/" + Path(usd_path).stem + "_info.json"
 
         count += 1
 
     with open(out_file, 'w') as f:
         json.dump(transforms, f, indent=2)
 
+    print(f"---Added {out_file}")
+
 def asset_convert(args):
-    supported_file_formats = ["usd"]
     for folder in args.folders:
         local_asset_output = folder + "_converted"
-        result = omni.client.create_folder(f"{local_asset_output}")
+        omni.client.create_folder(f"{local_asset_output}")
     
     tmpDir = tempfile.mkdtemp()
     for folder in args.folders:
         print(f"\nConverting folder {folder}...")
 
-        (result, models) = omni.client.list(folder)
+        _, models = omni.client.list(folder)
         for i, entry in enumerate(models):
             if i >= args.max_models:
                 print(f"max models ({args.max_models}) reached, exiting conversion")
@@ -172,23 +167,22 @@ def asset_convert(args):
             model_name = os.path.splitext(model)[0]
             model_format = (os.path.splitext(model)[1])[1:]
             # Supported input file formats
-            if model_format in supported_file_formats:
+            if model_format == "usd":
                 input_model_path = folder + "/" + model
 
-                # remove the ground plane for usd files such as robots
-                if args.remove_groundplane:
+                # rename the child meshes before conversion 
+                if model in args.environments:
+                    renamed_usd = os.path.join(tmpDir, f"{model}.usd") 
+                    get_mesh_info(input_model_path, renamed_usd, folder)
+                    input_model_path = renamed_usd
+                # if it is not environment, remove the ground plane
+                else:
                     usd_without_ground = os.path.join(tmpDir, f"{model}.usd") 
                     remove_ground_plane(input_model_path, usd_without_ground)
                     input_model_path = usd_without_ground
-
-                # this should be fixed - doesnt make sense since we point at a folder of usd files
-                # rename the child meshes before conversion 
-                if args.environment:
-                    renamed_usd = os.path.join(tmpDir, f"{model}.usd") 
-                    get_mesh_info(input_model_path, renamed_usd)
-                    input_model_path = renamed_usd
-
-                converted_model_path = os.path.join(folder + "_converted", f"{model_name}_{model_format}.gltf")
+                
+                converted_model_path = folder + "_converted/" + model_name + "_" + model_format + ".gltf"
+                
                 if not os.path.exists(converted_model_path):
                     status = asyncio.get_event_loop().run_until_complete(
                         convert(input_model_path, converted_model_path, True)
@@ -198,8 +192,8 @@ def asset_convert(args):
 
                     # if its not an environment, we should just repair the mesh now
                     # fill gaps and voxelize for Scenic
-                    if not args.environment:
-                        fix_mesh(converted_model_path)
+                    # if model not in args.environments:
+                    #     fix_mesh(converted_model_path)
                     print(f"---Added {converted_model_path}")
 
 if __name__ == "__main__":
@@ -221,12 +215,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--load-materials", action="store_true", help="If specified, materials will be loaded from meshes"
     )
+
     parser.add_argument(
-        "--remove-groundplane", action="store_true", help="If specified, the ground plane will be removed"
+        "--environments", type=str, nargs="+", default=[],
+        help="List of .usd filenames (not paths) to treat as environments. Others are treated as robots."
     )
-    parser.add_argument(
-        "--environment", action="store_true", help="If specified, json file with environment info is exported"
-    )
+
     args, unknown_args = parser.parse_known_args()
 
     if args.folders is not None:

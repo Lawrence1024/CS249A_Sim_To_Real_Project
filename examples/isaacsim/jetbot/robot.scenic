@@ -18,7 +18,7 @@ def jetbot_control(command):
 
 # Jetbot robot
 class Jetbot(IsaacSimRobot):
-    usd_path: "C:/isaacsim_assets/Assets/Isaac/4.5/Isaac/Robots/Jetbot/jetbot.usd"
+    usd_path: localPath("../../../assets/usd/jetbot.usd")
     # change this to be the right asset...
     shape: MeshShape.fromFile(localPath("../../../assets/meshes_converted/create_3_usd.obj"))
     control: jetbot_control

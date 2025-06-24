@@ -12,7 +12,7 @@ import trimesh
 
 class IsaacSimSimulator(Simulator):
 
-    def __init__(self, environmentUSDPath):
+    def __init__(self, environmentUSDPath=None):
         super().__init__()
         self.client = SimulationApp({"headless": False})
         self.environmentUSDPath = environmentUSDPath
@@ -36,7 +36,6 @@ class IsaacSimSimulation(Simulation):
 
     def __init__(self, scene, client, world, environmentUSDPath, *, timestep, **kwargs):
 
-        #from isaacsim.core.api import World
         from isaacsim.core.utils.extensions import enable_extension
         enable_extension("omni.kit.asset_converter")
 
@@ -82,9 +81,6 @@ class IsaacSimSimulation(Simulation):
 
         isaac_sim_obj = obj.create()
 
-        # if not obj.gravity:
-        #     isaac_sim_obj.prim.GetAttribute("physxRigidBody:disableGravity").Set(True)
-
         if obj.blueprint == "IsaacSimEnvironment":
             return
 
@@ -97,12 +93,10 @@ class IsaacSimSimulation(Simulation):
         if obj.blueprint == 'Robot':
             self.world.reset()
 
-        # fix this
+        # specific for franka robot post setup
         if obj.blueprint == "Franka":
             self.world.reset()
             obj.setup_post_load(self.world)
-        #     self.world.reset()
-        #     obj.setup_post_reset(self.world)
 
     def getProperties(self, obj, properties):
         from isaacsim.core.utils.rotations import quat_to_euler_angles
