@@ -33,15 +33,31 @@ class WebotsRobot(WebotsObject, DifferentialDriveRobot):
                     scaled_left = (self.leftMotorSpeed / 100.0) * max_webots_speed
                     scaled_right = (self.rightMotorSpeed / 100.0) * max_webots_speed
                     
+                command = {
+                    "type": "motor_command",
+                    "left_speed": scaled_left,
+                    "right_speed": scaled_right
+                }
+                message = json.dumps(command)
+                emitter.send(message.encode('utf-8'))
+            except Exception as e:
+                print(f"Motor command error: {e}")
+    
+    def _sendWaypointReached(self, waypoint_num):
+        """Send waypoint reached signal to robot controller."""
+        if hasattr(self, 'webotsSupervisor') and self.webotsSupervisor:
+            try:
+                emitter = self.webotsSupervisor.getDevice("emitter")
+                if emitter:
+                    import json
                     command = {
-                        "type": "motor_command",
-                        "left_speed": scaled_left,
-                        "right_speed": scaled_right
+                        "type": "waypoint_reached",
+                        "waypoint_num": waypoint_num
                     }
                     message = json.dumps(command)
                     emitter.send(message.encode('utf-8'))
             except Exception as e:
-                print(f"Motor command error: {e}")
+                print(f"Waypoint command error: {e}")
 
 
 class WebotsPololuRobot(WebotsRobot, PololuRobot):

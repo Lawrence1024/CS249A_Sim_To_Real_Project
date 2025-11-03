@@ -61,12 +61,16 @@ class SimpleRobotController:
             left_speed = command.get("left_speed", 0)
             right_speed = command.get("right_speed", 0)
             
-            print(f"Motor command: L={left_speed:.2f}, R={right_speed:.2f}")
-            
             if self.left_motor:
-                self.left_motor.setVelocity(-float(left_speed))  # Reversed direction
+                self.left_motor.setVelocity(float(left_speed))
             if self.right_motor:
-                self.right_motor.setVelocity(-float(right_speed))  # Reversed direction
+                self.right_motor.setVelocity(float(right_speed))
+        elif command.get("type") == "waypoint_reached":
+            waypoint_num = command.get("waypoint_num", "?")
+            if isinstance(waypoint_num, str):
+                print(f"✓ {waypoint_num}")
+            else:
+                print(f"✓ Waypoint {waypoint_num} reached!")
 
 # Create and run the controller
 controller = SimpleRobotController()

@@ -42,5 +42,11 @@ scenario = scenic.scenarioFromFile(path)
 
 while True:
     scene, _ = scenario.generate()
+    
+    # Debug: Print robot position to verify randomization
+    if scene.objects:
+        robot = scene.objects[0]
+        print(f"DEBUG: Robot spawned at position: {robot.position}")
+    
     print("Starting new robotics simulation...")
     simulator.simulate(scene, verbosity=2)
