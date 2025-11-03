@@ -58,13 +58,28 @@ class SimpleRobotController:
     def handle_command(self, command):
         """Handle motor commands from Scenic."""
         if command.get("type") == "motor_command":
-            left_speed = command.get("left_speed", 0)
-            right_speed = command.get("right_speed", 0)
-            
+            left_in = float(command.get("left_speed", 0))
+            right_in = float(command.get("right_speed", 0))
+
+            # Scale inputs: accept either percent (0..100) or rad/s.
+            maxL = self.left_motor.getMaxVelocity() if self.left_motor else 0.0
+            maxR = self.right_motor.getMaxVelocity() if self.right_motor else 0.0
+
+            def to_vel(val, vmax):
+                if vmax <= 0:
+                    return 0.0
+                # Heuristic: values > 1.5*vmax likely already rad/s; else treat as %
+                if abs(val) <= 120.0:
+                    return max(-vmax, min(vmax, (val / 100.0) * vmax))
+                return max(-vmax, min(vmax, val))
+
+            lvel = to_vel(left_in, maxL)
+            rvel = to_vel(right_in, maxR)
+
             if self.left_motor:
-                self.left_motor.setVelocity(float(left_speed))
+                self.left_motor.setVelocity(lvel)
             if self.right_motor:
-                self.right_motor.setVelocity(float(right_speed))
+                self.right_motor.setVelocity(rvel)
         elif command.get("type") == "waypoint_reached":
             waypoint_num = command.get("waypoint_num", "?")
             if isinstance(waypoint_num, str):
