@@ -1,0 +1,130 @@
+/**
+ * Template for robot driving lab exercises. This template just periodically switches between a
+ * STOPPED and a DRIVING mode, updating the LCD display on each change of mode.
+ */
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  single-threaded: true,
+}
+
+import Encoders from "lib/Encoders.lf"
+import Display from "lib/Display.lf"
+
+
+preamble {=
+  #include <math.h>
+  #include <motors.h>
+  #include <hardware/pio.h>
+  #include <quadrature_encoder.pio.h>
+
+  // pin defines
+  #define RIGHT_ENCODER_AB 8
+  #define LEFT_ENCODER_AB 12
+  #define RIGHT_SM 0
+  #define LEFT_SM 1
+=}
+
+reactor Robot {
+  timer main_loop(0, 10 ms)
+
+  input drive: bool             // Toggle mode.
+  
+  output notify: string         // Notify of mode change.
+
+  encoder = new Encoders()
+  display = new Display()
+
+  state encoder_left_start: int32_t
+  state encoder_right_start: int32_t
+  
+  state encoder_left_end: int32_t
+  state encoder_right_end: int32_t
+
+
+  state start_time: instant_t
+  state end_time: instant_t
+
+  reaction(startup) -> display.line0 {=
+    lf_set(display.line0, "INIT");
+
+    PIO pio = pio0;
+    pio_add_program(pio, &quadrature_encoder_program);
+    quadrature_encoder_program_init(pio, RIGHT_SM, RIGHT_ENCODER_AB, 0);
+    quadrature_encoder_program_init(pio, LEFT_SM, LEFT_ENCODER_AB, 0);
+
+    motors_init(1); // 1 indicates no clock division.
+
+    // read encoder first
+    self->encoder_right_start = -quadrature_encoder_get_count(pio0, RIGHT_SM);
+    self->encoder_left_start = -quadrature_encoder_get_count(pio0, LEFT_SM);
+
+    self->start_time = lf_time_logical();
+  =}
+
+
+// FSM
+  initial mode DRIVING {
+    reaction(main_loop) -> reset(MEASURING), display.line0, display.line1 {=
+      
+      instant_t current_time = lf_time_logical();
+      interval_t elapsed_time = current_time-self->start_time;
+      interval_t elapsed_time_ms = elapsed_time*1e-6;
+
+      lf_set(display.line0, "DRIVING");
+      
+      static char buf[17];
+      snprintf(buf, 17, "elapsed: %lld ms", elapsed_time_ms);
+      lf_set(display.line1, buf);
+
+      if (elapsed_time_ms > 5000)
+      {
+        lf_set_mode(MEASURING);
+        self->encoder_right_end = -quadrature_encoder_get_count(pio0, RIGHT_SM);
+        self->encoder_left_end = -quadrature_encoder_get_count(pio0, LEFT_SM);
+        self->end_time = lf_time_logical();
+        
+        uint16_t speed = 0;
+        motors_set_power(speed,true, true);
+        motors_set_power(speed,true, false);
+
+      }else{
+        // set signal
+        uint16_t speed = 500;
+        motors_set_power(speed,true, true);
+        motors_set_power(speed,true, false);
+      }
+    =}
+  }
+
+  mode MEASURING {
+    reaction(main_loop) -> reset(DRIVING), display.line0,display.line1,display.line2 {=       
+      //
+      double d_angle_left = (double)(self->encoder_left_end - self->encoder_left_start); // [rad]
+      double d_angle_right = (double)(self->encoder_right_end - self->encoder_right_start); // [rad]
+
+      interval_t dt = (self->end_time - self->start_time)*1e-9f; // s
+
+      double speed_left = d_angle_left/dt;
+      double speed_right = d_angle_right/dt;
+
+      static char buf1[17];
+      static char buf2[17];
+      
+      snprintf(buf1, 17, "speed_left: %.3f rad/s", speed_left);
+      snprintf(buf2, 17, "speed_right:%.3f rad/s", speed_right);
+
+      lf_set(display.line0, "Result");
+      lf_set(display.line1, buf1);
+      lf_set(display.line2, buf2);
+
+    =}
+  }
+}
+
+
+main reactor {
+  robot = new Robot()
+}
