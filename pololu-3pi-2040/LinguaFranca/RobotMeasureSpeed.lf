@@ -1,0 +1,157 @@
+/**
+ * Template for robot driving lab exercises. This template just periodically switches between a
+ * STOPPED and a DRIVING mode, updating the LCD display on each change of mode.
+ */
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  single-threaded: true,
+}
+
+import Display from "lib/Display.lf"
+
+
+preamble {=
+  #include <math.h>
+  #include <motors.h>
+  #include <hardware/pio.h>
+  #include <quadrature_encoder.pio.h>
+
+  // pin defines
+  #define RIGHT_ENCODER_AB 8
+  #define LEFT_ENCODER_AB 12
+  #define RIGHT_SM 0
+  #define LEFT_SM 1
+=}
+
+reactor Robot {
+  state time_init: time = 2sec
+  logical action a
+
+  timer main_loop(0, 1000 ms)
+  timer dispaly_loop(0, 2sec)
+
+  input drive: bool             // Toggle mode.
+  
+  output notify: string         // Notify of mode change.
+
+  display = new Display()
+
+  state encoder_count: int = 0;
+  state display_count: int = 0;
+  state encoder_left: int32_t[] = {0,0,0,0,0,0,0,0};
+  state encoder_right: int32_t[] = {0,0,0,0,0,0,0,0};
+  state encoder_time: instant_t[] = {0,0,0,0,0,0,0,0};
+
+
+  state start_time: instant_t
+  state end_time: instant_t
+
+  reaction(startup) -> display.line0, a {=
+    lf_set(display.line0, "INIT");
+
+    PIO pio = pio0;
+    pio_add_program(pio, &quadrature_encoder_program);
+    quadrature_encoder_program_init(pio, RIGHT_SM, RIGHT_ENCODER_AB, 0);
+    quadrature_encoder_program_init(pio, LEFT_SM, LEFT_ENCODER_AB, 0);
+
+    motors_init(1); // 1 indicates no clock division.
+
+    // wiat 2 sec
+    lf_schedule(a, self->time_init);
+  =}
+
+  initial mode INIT {
+    reaction(a)-> reset(DRIVING){=
+        lf_set_mode(DRIVING);
+        // read encoder first
+        self->encoder_count = 0;
+        self->display_count = 0;
+        self->encoder_left[self->encoder_count] = -quadrature_encoder_get_count(pio0, LEFT_SM);
+        self->encoder_right[self->encoder_count] = -quadrature_encoder_get_count(pio0, RIGHT_SM);
+        self->encoder_time[self->encoder_count] = lf_time_logical();
+
+        // set motor speed
+        uint16_t speed = 500;
+        motors_set_power(speed,true, true); // left motor
+        motors_set_power(speed,true, false); // right motor
+    =}
+  }
+
+
+// FSM
+ mode DRIVING {
+    reaction(main_loop) -> reset(MEASURING), display.line0, display.line1, display.line2 {=
+
+      
+      // save data
+      self->encoder_count+=1;
+      if (self->encoder_count > 7)
+      {
+        lf_set_mode(MEASURING);
+        self->display_count = 1;
+        motors_set_power(0, true, true);
+        motors_set_power(0, true, false);
+      }else{
+        self->encoder_left[self->encoder_count] = -quadrature_encoder_get_count(pio0, LEFT_SM);
+        self->encoder_right[self->encoder_count] = -quadrature_encoder_get_count(pio0, RIGHT_SM);
+        self->encoder_time[self->encoder_count] = lf_time_logical();
+       
+        // print the count
+        static char buf0[17];
+        static char buf1[17];
+        static char buf2[17];
+        snprintf(buf0, 17, "Driving count:%d", self->encoder_count);
+        snprintf(buf1, 17, "left:%d", self->encoder_left[self->encoder_count]);
+        snprintf(buf2, 17, "right:%d", self->encoder_right[self->encoder_count]);
+
+        lf_set(display.line0, buf0);
+        lf_set(display.line1, buf1);
+        lf_set(display.line2, buf2);
+      }
+    =}
+  }
+
+  mode MEASURING {
+    reaction(dispaly_loop) -> reset(DRIVING), display.line0,display.line1,display.line2 {=       
+      //
+      int i = self->display_count;
+      if (i>0)
+      {
+        double d_angle_left = (double)(self->encoder_left[i] - self->encoder_left[i-1]); // [deg]
+        double d_angle_right = (double)(self->encoder_right[i] - self->encoder_right[i-1]); // [deg]
+
+        interval_t dt = (self->encoder_time[i] - self->encoder_time[i-1])*1e-9f; // s
+
+        double speed_left = d_angle_left/dt;
+        double speed_right = d_angle_right/dt;
+
+        static char buf0[17];
+        static char buf1[17];
+        static char buf2[17];
+        
+        snprintf(buf0, 17, "Result %d:", i);
+        snprintf(buf1, 17, "speed_left: %.3f rad/s", speed_left);
+        snprintf(buf2, 17, "speed_right:%.3f rad/s", speed_right);
+
+        lf_set(display.line0, buf0);
+        lf_set(display.line1, buf1);
+        lf_set(display.line2, buf2);
+      }
+
+      self->display_count+=1;
+      if (self->display_count==8)
+      {
+        self->display_count = 1;
+      }
+
+    =}
+  }
+}
+
+
+main reactor {
+  robot = new Robot()
+}

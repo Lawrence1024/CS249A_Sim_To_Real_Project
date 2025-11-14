@@ -1,0 +1,6 @@
+[submodule "pololu-3pi-2040/pico-sdk"]
+	path = pololu-3pi-2040/pico-sdk
+	url = https://github.com/raspberrypi/pico-sdk.git
+[submodule "pololu-3pi-2040/pololu-3pi-2040-robot"]
+	path = pololu-3pi-2040/pololu-3pi-2040-robot
+	url = https://github.com/pololu/pololu-3pi-2040-robot.git
