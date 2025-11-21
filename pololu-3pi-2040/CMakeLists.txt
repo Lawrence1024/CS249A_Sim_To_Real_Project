@@ -33,5 +33,10 @@ add_executable(test_motors src/motors_test.c)
 pico_add_extra_outputs(test_motors)
 target_link_libraries(test_motors pico_stdlib pololu_3pi_2040_robot)
 
+add_executable(test_bluetooth src/bluetooth_pololu.c)
+pico_add_extra_outputs(test_bluetooth)
+pico_enable_stdio_usb(test_bluetooth 1)
+pico_enable_stdio_uart(test_bluetooth 0)
+target_link_libraries(test_bluetooth pico_stdlib pololu_3pi_2040_robot)
 
 
