@@ -1,8 +1,11 @@
 import threading
 from dataclasses import dataclass
+import sys, os
+import time
+from scipy.spatial.transform import Rotation as R
+import numpy as np
 
 # Import NatNetClient from the local PythonClient directory
-import sys, os
 sys.path.append(os.path.dirname(__file__))
 from PythonClient.NatNetClient import NatNetClient
 
@@ -16,6 +19,12 @@ class Pose:
     qz: float = 0.0
     qw: float = 1.0
 
+    def __str__(self):
+        return f"Position: ({self.x:.2f}, {self.y:.2f}, {self.z:.2f}), Orientation [x,y,z,w]): ({self.qx:.2f}, {self.qy:.2f}, {self.qz:.2f}, {self.qw:.2f})"
+
+    def get_euler_zyx(self, degrees = False):
+        r = R.from_quat([self.qx, self.qy, self.qz, self.qw])
+        return r.as_euler('zyx', degrees=degrees)  # returns (z, y, x)
 
 class MocapEstimator:
     def __init__(self, target_id):
@@ -53,6 +62,12 @@ class MocapEstimator:
         if not self.streaming_client.run(self.stream_type):
             print("ERROR: Could not start streaming client.")
             self.streaming_client.shutdown()
+        try:
+            time.sleep(1)
+        except KeyboardInterrupt :
+            print("Shutting down MocapEstimator...")
+            self.__del__()
+
 
     def __del__(self):
         self.streaming_client.shutdown()
