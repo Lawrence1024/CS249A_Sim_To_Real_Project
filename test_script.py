@@ -19,11 +19,13 @@ async def main():
 
             # send action via BLE
             if pose.x>0.0:
-                command = b"B"  # Example command
+                left_speed = 100
+                right_speed = 0
             else:
-                command = b"F"
-            await ble_sender.send_command(command)
-
+                left_speed = -100
+                right_speed = 0
+            await ble_sender.send_wheel_speed_command(left_speed, right_speed)
+    
             print(pose)
             await asyncio.sleep(0.01)
         except KeyboardInterrupt:
