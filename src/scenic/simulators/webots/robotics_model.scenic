@@ -28,18 +28,14 @@ class WebotsRobot(WebotsObject, DifferentialDriveRobot):
                 emitter = self.webotsSupervisor.getDevice("emitter")
                 if emitter:
                     import json
-                    # Scale motor speeds to fit Webots motor limits (maxVelocity = 10)
-                    max_webots_speed = 10
-                    scaled_left = (self.leftMotorSpeed / 100.0) * max_webots_speed
-                    scaled_right = (self.rightMotorSpeed / 100.0) * max_webots_speed
-                    
-                command = {
-                    "type": "motor_command",
-                    "left_speed": scaled_left,
-                    "right_speed": scaled_right
-                }
-                message = json.dumps(command)
-                emitter.send(message.encode('utf-8'))
+                    # Send percent values (0..100) and let the robot controller scale to its maxVelocity.
+                    command = {
+                        "type": "motor_command",
+                        "left_speed": self.leftMotorSpeed,
+                        "right_speed": self.rightMotorSpeed
+                    }
+                    message = json.dumps(command)
+                    emitter.send(message.encode('utf-8'))
             except Exception as e:
                 print(f"Motor command error: {e}")
     

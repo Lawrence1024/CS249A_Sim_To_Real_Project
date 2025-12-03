@@ -283,6 +283,7 @@ DEF POLOLU_ROBOT Robot {
       device [
         RotationalMotor {
           name "leftMotor"
+          maxVelocity 105
         }
       ]
       endPoint Solid {
@@ -318,6 +319,7 @@ DEF POLOLU_ROBOT Robot {
       device [
         RotationalMotor {
           name "rightMotor"
+          maxVelocity 105
         }
       ]
       endPoint Solid {
