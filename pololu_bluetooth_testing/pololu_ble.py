@@ -2,7 +2,7 @@
 # (macOS + Bleak ≥ 1.0)
 import asyncio
 from typing import Optional, Union
-from bleak import BleakScanner, BleakClient, BleakDevice
+from bleak import BleakScanner, BleakClient, BLEDevice
 
 SERVICE_UUID = "FFE0"
 CHAR_UUID = "FFE1"
@@ -15,10 +15,10 @@ class PololuBLE:
     
     def __init__(self):
         self.client: Optional[BleakClient] = None
-        self.device: Optional[BleakDevice] = None
+        self.device: Optional[BLEDevice] = None
         self._connected = False
     
-    async def find_device(self, timeout: float = 5.0) -> Optional[BleakDevice]:
+    async def find_device(self, timeout: float = 5.0) -> Optional[BLEDevice]:
         """Scan and find HM-10 device.
         
         Args:
@@ -34,11 +34,11 @@ class PololuBLE:
                 return d
         return None
     
-    async def connect(self, device: Optional[BleakDevice] = None, timeout: float = 5.0) -> bool:
+    async def connect(self, device: Optional[BLEDevice] = None, timeout: float = 5.0) -> bool:
         """Connect to HM-10 device.
         
         Args:
-            device: Optional BleakDevice. If None, will scan for device.
+            device: Optional BLEDevice. If None, will scan for device.
             timeout: Scan timeout if device is None
             
         Returns:
@@ -121,70 +121,90 @@ class PololuBLE:
     
     def is_connected(self) -> bool:
         """Check if connected."""
-        return self._connected and self.client and self.client.is_connected
-
-
-# Global instance for convenience
-_global_instance: Optional[PololuBLE] = None
-
-
-def send_ble_command(command: Union[bytes, str], auto_connect: bool = True) -> bool:
-    """Send BLE command to Pololu (synchronous wrapper).
+        return self._connected and self.client and self.client.is_connectedble_sender
     
-    This is a convenience function that uses a global instance.
-    For better control, use PololuBLE class directly.
-    
-    Args:
-        command: Command to send (bytes or string)
-        auto_connect: Automatically connect if not connected
+    def send_wheel_speed_command(self, left_speed: float, right_speed: float) -> bool:
+        """Send wheel speed command to Pololu robot.
         
-    Returns:
-        True if sent successfully, False otherwise
-    """
-    global _global_instance
-    
-    async def _send():
-        nonlocal _global_instance
-        if _global_instance is None:
-            _global_instance = PololuBLE()
+        Args:
+            left_speed: Speed for left wheel (-255 to 255)
+            right_speed: Speed for right wheel (-255 to 255)
+            
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        # Clamp speeds to valid range
+        left_speed = max(-255, min(255, left_speed))
+        right_speed = max(-255, min(255, right_speed))
         
-        if not _global_instance.is_connected():
-            if auto_connect:
-                if not await _global_instance.connect():
-                    return False
-            else:
-                print("Not connected. Please connect first.")
-                return False
+        # Create command bytes
+        command = bytes([left_speed & 0xFF, right_speed & 0xFF])
         
-        return await _global_instance.send_command(command)
-    
-    return asyncio.run(_send())
+        # Send command
+        return asyncio.run(self.send_command(command))
 
 
-async def send_ble_command_async(command: Union[bytes, str], auto_connect: bool = True) -> bool:
-    """Send BLE command to Pololu (async version).
+# # Global instance for convenience
+# _global_instance: Optional[PololuBLE] = None
+
+
+# def send_ble_command(command: Union[bytes, str], auto_connect: bool = True) -> bool:
+#     """Send BLE command to Pololu (synchronous wrapper).
     
-    Args:
-        command: Command to send (bytes or string)
-        auto_connect: Automatically connect if not connected
+#     This is a convenience function that uses a global instance.
+#     For better control, use PololuBLE class directly.
+    
+#     Args:
+#         command: Command to send (bytes or string)
+#         auto_connect: Automatically connect if not connected
         
-    Returns:
-        True if sent successfully, False otherwise
-    """
-    global _global_instance
+#     Returns:
+#         True if sent successfully, False otherwise
+#     """
+#     global _global_instance
     
-    if _global_instance is None:
-        _global_instance = PololuBLE()
+#     async def _send():
+#         nonlocal _global_instance
+#         if _global_instance is None:
+#             _global_instance = PololuBLE()
+        
+#         if not _global_instance.is_connected():
+#             if auto_connect:
+#                 if not await _global_instance.connect():
+#                     return False
+#             else:
+#                 print("Not connected. Please connect first.")
+#                 return False
+        
+#         return await _global_instance.send_command(command)
     
-    if not _global_instance.is_connected():
-        if auto_connect:
-            if not await _global_instance.connect():
-                return False
-        else:
-            print("Not connected. Please connect first.")
-            return False
+#     return asyncio.run(_send())
+
+
+# async def send_ble_command_async(command: Union[bytes, str], auto_connect: bool = True) -> bool:
+#     """Send BLE command to Pololu (async version).
     
-    return await _global_instance.send_command(command)
+#     Args:
+#         command: Command to send (bytes or string)
+#         auto_connect: Automatically connect if not connected
+        
+#     Returns:
+#         True if sent successfully, False otherwise
+#     """
+#     global _global_instance
+    
+#     if _global_instance is None:
+#         _global_instance = PololuBLE()
+    
+#     if not _global_instance.is_connected():
+#         if auto_connect:
+#             if not await _global_instance.connect():
+#                 return False
+#         else:
+#             print("Not connected. Please connect first.")
+#             return False
+    
+#     return await _global_instance.send_command(command)
 
 
 # Example usage
