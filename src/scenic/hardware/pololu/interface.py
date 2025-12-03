@@ -17,6 +17,50 @@ if _scenic_root not in sys.path:
 from mocap.mocap_estimator import MocapEstimator, Pose
 from pololu_bluetooth_testing.pololu_ble import PololuBLE
 
+# class Pose:
+#     """Very simple pose object for testing.
+
+#     Attributes:
+#         x, y, z: position in meters
+#         yaw: heading angle in radians
+#     """
+#     def __init__(self, x=0.0, y=0.0, z=0.0, yaw=0.0):
+#         self.x = x
+#         self.y = y
+#         self.z = z
+#         self._yaw = yaw
+
+#     def get_euler_zyx(self, degrees=False):
+#         """Return (yaw, pitch, roll) in the format expected by the model.
+
+#         Your HardwarePololuRobot only uses the first component (yaw).
+#         """
+#         if degrees:
+#             # radians → degrees
+#             from math import degrees as rad2deg
+#             return (rad2deg(self._yaw), 0.0, 0.0)
+#         else:
+#             return (self._yaw, 0.0, 0.0)
+
+
+# class MocapEstimator:
+#     """Dummy mocap estimator which never talks to the network.
+
+#     It just returns a fixed Pose, or you can update the pose manually.
+#     """
+#     def __init__(self, target_id=None, *args, **kwargs):
+#         self.target_id = target_id
+#         # you can change these to whatever you like
+#         self.pose = Pose(0.0, 0.0, 0.0, yaw=0.0)
+
+#     def get_pose(self) -> Pose:
+#         """Return the current dummy pose."""
+#         return self.pose
+
+#     # optional helpers if you want to move the robot manually in tests
+#     def set_pose(self, x, y, z=0.0, yaw=0.0):
+#         self.pose = Pose(x, y, z, yaw)
+
 class HardwareInterface:
     """Hardware interface for Pololu robot with BLE control and mocap feedback.
     
@@ -31,6 +75,7 @@ class HardwareInterface:
             mocap_target_id: Motion capture target ID for this robot
         """
         self.mocap_estimator = MocapEstimator(target_id=mocap_target_id)
+        # self.mocap_estimator = MocapEstimator()
         self.ble_sender = PololuBLE()
         self._connected = False
     
