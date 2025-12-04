@@ -94,10 +94,13 @@ class HardwarePololuRobot(PololuRobot):
                 # Scenic's headingOfSegment() applies -π/2 conversion, so we must do the same
                 from scenic.core.geometry import normalizeAngle
                 import math
-                self.heading = normalizeAngle(yaw - math.pi / 2.0)
+                converted_heading = normalizeAngle(yaw - math.pi / 2.0)
+                
+                # Scenic uses 'yaw' internally, not 'heading'
+                self.yaw = converted_heading
                 
                 # DIAGNOSTIC: Log mocap values
-                print(f"[MOCAP] rawYaw={yaw:.3f} → heading={self.heading:.3f}")
+                print(f"[MOCAP] rawYaw={yaw:.3f} → yaw={self.yaw:.3f}")
                 
             except Exception as e:
                 print(f"Error updating position from mocap: {e}")
