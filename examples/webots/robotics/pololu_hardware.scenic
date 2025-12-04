@@ -15,7 +15,7 @@ workspace = Workspace(workspace_region)
 # Create a Pololu robot that follows the square track
 # Position at first waypoint to start the track properly
 # Height 0.02465m = body center height (5.8mm clearance + 18.85mm half-height)
-robot = new HardwarePololuRobot at (-1.5, -1.5, 0.02465), with behavior SquareTrackBehavior(forwardSpeed=80, turnSpeed=60, headingOffset=-90 deg)
+robot = new HardwarePololuRobot at (-1.5, -1.5, 0.02465), with behavior SquareTrackBehavior(forwardSpeed=80, turnSpeed=100, headingOffset=0 deg)
 
 # Terminate after 120 seconds
 terminate after 120 seconds

@@ -143,6 +143,10 @@ class HardwareInterface:
         left_angular_vel = (left_speed / 100.0) * self.max_angular_velocity
         right_angular_vel = (right_speed / 100.0) * self.max_angular_velocity
         
+        # convert to deg/s
+        left_angular_vel = left_angular_vel * (180.0 / 3.141592653589793)
+        right_angular_vel = right_angular_vel * (180.0 / 3.141592653589793)
+
         # The BLE command expects angular velocity values
         # Convert to the format expected by the hardware (check pololu_ble.py for format)
         # Based on pololu_ble.py line 149-153, it uses struct.pack('<cff', ...) for rad/s
