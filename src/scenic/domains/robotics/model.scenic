@@ -63,11 +63,18 @@ class DifferentialDriveRobot(Robot, DifferentialDrive):
         self.setRightMotor(right)
 
 class PololuRobot(DifferentialDriveRobot):
-    """Pololu-style differential drive robot."""
+    """Pololu-style differential drive robot.
     
-    width: 0.1
-    length: 0.1
-    height: 0.05
+    Physical dimensions based on Pololu 3Pi+ 32U4 OLED (official drawings):
+    - Body: 91.2mm length × 66mm width × 37.7mm height (rectangular)
+    - Wheels: 32mm diameter, 6.8mm width
+    - Ball caster: 12.7mm diameter
+    - Ground clearance: 5.8mm
+    """
+    
+    width: 0.066   # 66mm (body width, left-right)
+    length: 0.0912 # 91.2mm (body length, front-back)
+    height: 0.0377 # 37.7mm (body height, top-down)
 
 class LineFollowingRobot(PololuRobot):
     """Robot optimized for line following."""

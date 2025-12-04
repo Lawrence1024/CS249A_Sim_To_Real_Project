@@ -25,7 +25,7 @@ track_points = track_waypoints + [track_waypoints[0]]
 track_centerline = PolylineRegion(track_points)
 
 # Define a workspace region (4.5x4.5 meter area centered at origin to accommodate robot size)
-workspace_region = RectangularRegion((0, 0, 0.016), 0, 4.5, 4.5)
+workspace_region = RectangularRegion((0, 0, 0.02465), 0, 4.5, 4.5)
 workspace = Workspace(workspace_region)
 
 # Parameter: arc length along track centerline (s) - using Frenet frame
@@ -35,10 +35,10 @@ param s = VerifaiRange(0, track_perimeter)
 # Create a Pololu robot that follows the square track
 # Position determined by arc length "s" along the track centerline using pointAlongBy
 # This method works with distributions - Scenic handles it properly
-# Normalize s to track perimeter and set z coordinate to 0.016 (robot height)
+# Normalize s to track perimeter and set z coordinate to 0.02465 (robot height)
 s_normalized = globalParameters.s % track_perimeter
 s_pos_2d = track_centerline.pointAlongBy(s_normalized, normalized=False)
-robot = new WebotsPololuRobot at (s_pos_2d.x, s_pos_2d.y, 0.016), 
+robot = new WebotsPololuRobot at (s_pos_2d.x, s_pos_2d.y, 0.02465), 
     with behavior SquareTrackBehavior(
         forwardSpeed=VerifaiRange(50, 100), 
         turnSpeed=VerifaiRange(40, 80), 

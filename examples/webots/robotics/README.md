@@ -59,7 +59,9 @@ Webots has a built-in **console window** where all Python print statements appea
 
 Defines:
 - **Supervisor robot** with Scenic controller
-- **POLOLU_ROBOT** with differential drive (left/right motors)
+- **POLOLU_ROBOT** with differential drive (left/right motors) and ball caster
+  - Accurate dimensions: 10cm diameter body, 3.5cm wheels, 1.25cm ball caster
+  - See [DIGITAL_TWIN_SPECIFICATIONS.md](DIGITAL_TWIN_SPECIFICATIONS.md) for detailed measurements
 - **Ground plane** for the robot to move on
 - **Race track visualization** with red outer lines and blue inner lines forming a square
 - **Communication devices** (Emitter/Receiver) for Scenic to send motor commands
@@ -134,3 +136,16 @@ You can use different behaviors from `scenic.domains.robotics.behaviors`:
 - `ObstacleAvoidanceBehavior()`: Avoid obstacles using sensors
 
 The power of Scenic is that **you just describe what you want** - define waypoints, behaviors, and the robot will follow them!
+
+## Digital Twin Specifications
+
+For detailed information about the robot's physical dimensions, geometry, and accuracy, see:
+
+📄 **[DIGITAL_TWIN_SPECIFICATIONS.md](DIGITAL_TWIN_SPECIFICATIONS.md)**
+
+This document includes:
+- Accurate measurements of all robot components (body, wheels, ball caster)
+- Coordinate system and positioning calculations
+- Geometry validation and consistency checks
+- Comparison with previous approximate dimensions
+- Future improvement suggestions

@@ -252,33 +252,36 @@ Transform {
   ]
 }
 DEF POLOLU_ROBOT Robot {
-  translation 0 0 0.02
+  translation 0 0 0.02465
   rotation 0 0 1 0
   controller "simple_robot_controller"
-  boundingObject Cylinder {
-    height 0.036
-    radius 0.048
+  boundingObject Box {
+    size 0.0912 0.066 0.0377
   }
   physics Physics {
-    density 1000
-    mass 0.1
+    density -1
+    mass 0.15
+    centerOfMass [ 0 0 0 ]
   }
   children [
+    # Main body box (91.2mm length × 66mm width × 37.7mm height)
+    # Ground clearance: 5.8mm
     Shape {
       appearance PBRAppearance {
         baseColor 0.2 0.2 0.8
         roughness 0.5
         metalness 0
       }
-      geometry Cylinder {
-        height 0.036
-        radius 0.048
+      geometry Box {
+        size 0.0912 0.066 0.0377
       }
     }
+    # Left wheel (32mm diameter, 6.8mm width)
+    # Positioned 44.4mm from front (1.2mm from center), 15mm gap + wheel half-width from body edge
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor 0 0.048 -0.016
+        anchor 0.0012 0.0514 -0.00865
       }
       device [
         RotationalMotor {
@@ -287,34 +290,47 @@ DEF POLOLU_ROBOT Robot {
         }
       ]
       endPoint Solid {
-        translation 0 0.03 -0.016
-        rotation 1 0 0 1.5708
+        translation 0.0012 0.0514 -0.00865
         name "leftWheel"
         children [
-          Shape {
-            appearance PBRAppearance {
-              baseColor 1 1 0
-            }
-            geometry Cylinder {
-              height 0.007
-              radius 0.016
-            }
+          Transform {
+            rotation 1 0 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 1 1 0
+                  roughness 1.0
+                }
+                geometry Cylinder {
+                  height 0.0068
+                  radius 0.016
+                }
+              }
+            ]
           }
         ]
-        boundingObject Cylinder {
-          height 0.007
-          radius 0.016
+        boundingObject Transform {
+          rotation 1 0 0 1.5708
+          children [
+            Cylinder {
+              height 0.0068
+              radius 0.016
+            }
+          ]
         }
         physics Physics {
-          density 100
+          density -1
+          mass 0.01
         }
         contactMaterial "wheel_material"
       }
     }
+    # Right wheel (32mm diameter, 6.8mm width)
+    # Positioned 44.4mm from front (1.2mm from center), 15mm gap + wheel half-width from body edge
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor 0 -0.048 -0.016
+        anchor 0.0012 -0.0514 -0.00865
       }
       device [
         RotationalMotor {
@@ -323,29 +339,65 @@ DEF POLOLU_ROBOT Robot {
         }
       ]
       endPoint Solid {
-        translation 0 -0.03 -0.016
-        rotation 1 0 0 1.5708
+        translation 0.0012 -0.0514 -0.00865
         name "rightWheel"
         children [
-          Shape {
-            appearance PBRAppearance {
-              baseColor 1 1 0
-            }
-            geometry Cylinder {
-              height 0.007
-              radius 0.016
-            }
+          Transform {
+            rotation 1 0 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 1 1 0
+                  roughness 1.0
+                }
+                geometry Cylinder {
+                  height 0.0068
+                  radius 0.016
+                }
+              }
+            ]
           }
         ]
-        boundingObject Cylinder {
-          height 0.007
-          radius 0.016
+        boundingObject Transform {
+          rotation 1 0 0 1.5708
+          children [
+            Cylinder {
+              height 0.0068
+              radius 0.016
+            }
+          ]
         }
         physics Physics {
-          density 100
+          density -1
+          mass 0.01
         }
         contactMaterial "wheel_material"
       }
+    }
+    # Ball caster at back (12.7mm diameter)
+    # Positioned at back of robot (-45.6mm), touching ground
+    Solid {
+      translation -0.0456 0 -0.0183
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            roughness 0.2
+            metalness 0.5
+          }
+          geometry Sphere {
+            radius 0.00635
+          }
+        }
+      ]
+      boundingObject Sphere {
+        radius 0.00635
+      }
+      physics Physics {
+        density -1
+        mass 0.002
+      }
+      name "ballCaster"
     }
     # Communication devices for Scenic control
     Emitter {
