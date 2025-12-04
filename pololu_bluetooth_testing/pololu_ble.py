@@ -4,6 +4,8 @@ import asyncio
 from typing import Optional, Union
 from bleak import BleakScanner, BleakClient, BLEDevice
 
+import struct
+
 SERVICE_UUID = "FFE0"
 CHAR_UUID = "FFE1"
 
@@ -123,25 +125,36 @@ class PololuBLE:
         """Check if connected."""
         return self._connected and self.client and self.client.is_connectedble_sender
     
-    def send_wheel_speed_command(self, left_speed: float, right_speed: float) -> bool:
-        """Send wheel speed command to Pololu robot.
+    # def send_wheel_speed_command(self, left_speed: float, right_speed: float) -> bool:
+    #     """Send wheel speed command to Pololu robot.
         
-        Args:
-            left_speed: Speed for left wheel (-255 to 255)
-            right_speed: Speed for right wheel (-255 to 255)
+    #     Args:
+    #         left_speed: Speed for left wheel (-255 to 255)
+    #         right_speed: Speed for right wheel (-255 to 255)
             
-        Returns:
-            True if sent successfully, False otherwise
-        """
-        # Clamp speeds to valid range
-        left_speed = max(-255, min(255, left_speed))
-        right_speed = max(-255, min(255, right_speed))
+    #     Returns:
+    #         True if sent successfully, False otherwise
+    #     """
+    #     # Clamp speeds to valid range
+    #     left_speed = max(-255, min(255, left_speed))
+    #     right_speed = max(-255, min(255, right_speed))
         
-        # Create command bytes
-        command = bytes([left_speed & 0xFF, right_speed & 0xFF])
+    #     # Create command bytes
+    #     command = bytes([left_speed & 0xFF, right_speed & 0xFF])
         
-        # Send command
-        return asyncio.run(self.send_command(command))
+    #     # Send command
+    #     return asyncio.run(self.send_command(command))
+    
+
+    def send_wheel_speed_command(self, left_rads: float, right_rads: float) -> bytes:
+        # Use 'A' as the header character byte
+        command_char = b'A' 
+        # '<cff' packs 1-byte char, 4-byte float, 4-byte float (Total 9 bytes)
+        command_bytes = struct.pack('<cff', command_char, left_rads, right_rads)
+        
+        # You would then call your BLE send function: 
+        # asyncio.run(self.send_command(command_bytes))
+        return command_bytes
 
 
 # # Global instance for convenience
