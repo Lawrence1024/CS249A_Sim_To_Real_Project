@@ -25,6 +25,7 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, headingOffset=
         target = waypoints[currentWaypoint]
         
         # Compute angle error to target
+        print(self.position, self.heading)
         targetHeading = headingOfSegment(self.position, target)
         effectiveHeading = normalizeAngle(self.heading + headingOffset)
         angle = normalizeAngle(targetHeading - effectiveHeading)

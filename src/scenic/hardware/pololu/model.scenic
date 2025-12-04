@@ -56,12 +56,12 @@ class HardwarePololuRobot(PololuRobot):
         """
         if self._hardware_interface:
             try:
-                # Convert from Scenic speed range (-100 to 100) to BLE range (-255 to 255)
-                left_ble = int((self.leftMotorSpeed / 100.0) * 255)
-                right_ble = int((self.rightMotorSpeed / 100.0) * 255)
+                # Send raw Scenic motor speeds directly to BLE (no conversion)
+                left_speed = self.leftMotorSpeed
+                right_speed = self.rightMotorSpeed
                 
                 # Store command to be sent asynchronously
-                self._pending_motor_command = (left_ble, right_ble)
+                self._pending_motor_command = (left_speed, right_speed)
             except Exception as e:
                 print(f"Hardware motor command error: {e}")
     
@@ -69,7 +69,7 @@ class HardwarePololuRobot(PololuRobot):
         """Get and clear any pending motor command.
         
         Returns:
-            Tuple of (left_speed, right_speed) in BLE range, or None if no command
+            Tuple of (left_speed, right_speed) from Scenic behavior, or None if no command
         """
         cmd = self._pending_motor_command
         self._pending_motor_command = None
@@ -81,8 +81,13 @@ class HardwarePololuRobot(PololuRobot):
             try:
                 pose = self._hardware_interface.get_pose()
                 
+                # Log mocap input (what behavior sees)
+                print(f"[MOCAP] position=({pose.x:.3f}, {pose.y:.3f}, {pose.z:.3f}), heading={pose.get_euler_zyx()[0]:.3f}")
+                
                 # Update position (mocap coordinates in meters)
-                self.position = (pose.x, pose.y, pose.z)
+                # Must use Vector, not tuple
+                from scenic.core.vectors import Vector
+                self.position = Vector(pose.x, pose.y, pose.z)
                 
                 # Convert quaternion to heading/yaw
                 euler = pose.get_euler_zyx(degrees=False)
