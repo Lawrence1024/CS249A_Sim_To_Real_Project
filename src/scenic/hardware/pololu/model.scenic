@@ -81,9 +81,6 @@ class HardwarePololuRobot(PololuRobot):
             try:
                 pose = self._hardware_interface.get_pose()
                 
-                # Log mocap input (what behavior sees)
-                print(f"[MOCAP] position=({pose.x:.3f}, {pose.y:.3f}, {pose.z:.3f}), heading={pose.get_euler_zyx()[0]:.3f}")
-                
                 # Update position (mocap coordinates in meters)
                 # Must use Vector, not tuple
                 from scenic.core.vectors import Vector
@@ -93,9 +90,14 @@ class HardwarePololuRobot(PololuRobot):
                 euler = pose.get_euler_zyx(degrees=False)
                 yaw = euler[0]  # z-axis rotation is yaw/heading
                 
-                # Update orientation (Scenic uses yaw in radians)
-                from scenic.core.vectors import Orientation
-                self.heading = yaw
+                # Convert from standard math convention (0=East/+X) to Scenic convention (0=North/+Y)
+                # Scenic's headingOfSegment() applies -π/2 conversion, so we must do the same
+                from scenic.core.geometry import normalizeAngle
+                import math
+                self.heading = normalizeAngle(yaw - math.pi / 2.0)
+                
+                # DIAGNOSTIC: Log mocap values
+                print(f"[MOCAP] rawYaw={yaw:.3f} → heading={self.heading:.3f}")
                 
             except Exception as e:
                 print(f"Error updating position from mocap: {e}")

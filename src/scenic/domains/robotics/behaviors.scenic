@@ -26,12 +26,14 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, headingOffset=
         target = waypoints[currentWaypoint]
         
         # Compute angle error to target
-        print(self.position, self.heading)
         targetHeading = headingOfSegment(self.position, target)
-        print(self.position)
         effectiveHeading = normalizeAngle(self.heading + headingOffset)
         angle = normalizeAngle(targetHeading - effectiveHeading)
         distance = distance from self to target
+        
+        # DIAGNOSTIC: Log all key navigation values
+        print(f"[NAV] WP{currentWaypoint} pos=({self.position.x:.2f},{self.position.y:.2f}) dist={distance:.2f}m")
+        print(f"[NAV] heading={self.heading:.3f} targetH={targetHeading:.3f} effectiveH={effectiveHeading:.3f} angle={angle:.3f}")
         
         if distance > 0.1:
             # Improved proportional control with gain adjustment
@@ -65,13 +67,16 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, headingOffset=
             leftSpeed = max(0, min(100, leftSpeed))
             rightSpeed = max(0, min(100, rightSpeed))
             
-            lastAngleError = angle            
+            lastAngleError = angle
+            
+            # DIAGNOSTIC: Log motor commands
+            print(f"[MOTOR] L={leftSpeed:.1f} R={rightSpeed:.1f}")
+            
             # Take proportional turn action
             take SetMotorAction(leftSpeed, rightSpeed)
             wait
         else:
             # Reached waypoint - move to next
-            self._sendWaypointReached(currentWaypoint)
             currentWaypoint = (currentWaypoint + 1) % len(waypoints)
             lastAngleError = 0  # Reset error when switching waypoints
             wait

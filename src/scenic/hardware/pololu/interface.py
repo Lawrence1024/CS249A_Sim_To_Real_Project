@@ -150,13 +150,11 @@ class HardwareInterface:
         command_char = b'A'  # Header character
         command_bytes = struct.pack('<cff', command_char, left_angular_vel, right_angular_vel)
         
-        # Log what's being sent through BLE
-        if not self._connected:
-            print(f"[BLE] left={left_angular_vel:.3f} rad/s, right={right_angular_vel:.3f} rad/s (not connected)")
-        else:
-            print(f"[BLE] left={left_angular_vel:.3f} rad/s, right={right_angular_vel:.3f} rad/s")
-            # Send command via async interface
+        # Send command via async interface
+        if self._connected:
             await self.ble_sender.send_command(command_bytes)
+        # else:
+        #     print(f"[BLE] Not connected: left={left_angular_vel:.3f} rad/s, right={right_angular_vel:.3f} rad/s")
     
     def get_pose(self) -> Pose:
         """Get current pose from motion capture system.
@@ -192,18 +190,15 @@ class HardwareInterface:
         """
         loop = self._event_loop
         if loop is None:
-            print("[EVENT_LOOP] WARNING: No event loop stored, using fallback")
             # Fallback: try to get current loop
             try:
                 loop = asyncio.get_running_loop()
-                print("[EVENT_LOOP] Found running loop, scheduling task")
                 # If loop is running, schedule as task (fire and forget)
                 asyncio.create_task(
                     self.send_wheel_speed_command(left_speed, right_speed)
                 )
                 return
             except RuntimeError:
-                print("[EVENT_LOOP] No running loop, creating temporary one")
                 # No loop running, create temporary one
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -217,7 +212,6 @@ class HardwareInterface:
         
         # Use stored loop
         if loop.is_running():
-            print("[EVENT_LOOP] Loop is running, using run_coroutine_threadsafe")
             # Loop is running in another thread/context, schedule as task
             asyncio.run_coroutine_threadsafe(
                 self.send_wheel_speed_command(left_speed, right_speed),
