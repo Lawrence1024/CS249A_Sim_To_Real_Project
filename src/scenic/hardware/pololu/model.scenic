@@ -80,7 +80,7 @@ class HardwarePololuRobot(PololuRobot):
         if self._hardware_interface:
             try:
                 pose = self._hardware_interface.get_pose()
-                
+
                 # Update position (mocap coordinates in meters)
                 # Must use Vector, not tuple
                 from scenic.core.vectors import Vector
@@ -94,10 +94,10 @@ class HardwarePololuRobot(PololuRobot):
                 # Scenic's headingOfSegment() applies -π/2 conversion, so we must do the same
                 from scenic.core.geometry import normalizeAngle
                 import math
-                self.heading = normalizeAngle(yaw - math.pi / 2.0)
+                self.yaw = normalizeAngle(yaw - math.pi / 2.0)
                 
                 # DIAGNOSTIC: Log mocap values
-                print(f"[MOCAP] rawYaw={yaw:.3f} → heading={self.heading:.3f}")
+                print(f"[MOCAP] pos={self.position} rawYaw={yaw:.3f} → heading={self.heading:.3f}")
                 
             except Exception as e:
                 print(f"Error updating position from mocap: {e}")

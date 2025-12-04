@@ -20,11 +20,17 @@
 #define R_PWM_PIN      14
 #define L_PWM_PIN      15
 
+#define MAX_MOTOR_POWER 0x0FFF
+#define LEFT_MOTOR_DIRECTION 11
+#define LEFT_MOTOR_SPEED 15
+#define RIGHT_MOTOR_DIRECTION 10
+#define RIGHT_MOTOR_SPEED 14
+
 // coefficients for left motor
-float l_coeff_a = 1.37f;
-float l_coeff_b = -100.5f;
-float r_coeff_a = 1.37f;
-float r_coeff_b = -100.0f;
+float l_coeff_a = 0.725f;
+float l_coeff_b = 102.0f;
+float r_coeff_a = 0.731f;
+float r_coeff_b = 109.0f;
 
 inline float speed_to_pwm(float speed, float a, float b){
     return a * speed + b;
@@ -43,17 +49,29 @@ static void pwm_init_20k_on_pin(uint pin){
     slice7 = slice;
 }
 
-static inline void set_motor_speed(int l_pct, int r_pct){
-    gpio_set_function(25, 0);
-    if (l_pct>100) l_pct=100; if (l_pct<-100) l_pct=-100;
-    if (r_pct>100) r_pct=100; if (r_pct<-100) r_pct=-100;
-    gpio_put(L_DIR_PIN, l_pct<=0);
-    gpio_put(R_DIR_PIN, r_pct<=0);
-    uint16_t top = pwm_hw->slice[slice7].top;
-    uint16_t ll = (uint16_t)(top * (l_pct>=0 ? l_pct : -l_pct) / 100);
-    uint16_t rl = (uint16_t)(top * (r_pct>=0 ? r_pct : -r_pct) / 100);
-    pwm_set_chan_level(pwm_gpio_to_slice_num(L_PWM_PIN), pwm_gpio_to_channel(L_PWM_PIN), ll);
-    pwm_set_chan_level(pwm_gpio_to_slice_num(R_PWM_PIN), pwm_gpio_to_channel(R_PWM_PIN), rl);
+void motors_init(uint8_t clock_divider) {
+  // Initialize and set direction of GPIO pins.
+  gpio_init(RIGHT_MOTOR_DIRECTION);
+  gpio_set_dir(RIGHT_MOTOR_DIRECTION, GPIO_OUT);
+  gpio_init(LEFT_MOTOR_DIRECTION);
+  gpio_set_dir(LEFT_MOTOR_DIRECTION, GPIO_OUT);
+
+  // Set motor PWM GPIO pins
+  gpio_set_function(RIGHT_MOTOR_SPEED, GPIO_FUNC_PWM);
+  gpio_set_function(LEFT_MOTOR_SPEED, GPIO_FUNC_PWM);
+
+  // Configure PWM slice and get the slice number that controls the speed.
+  // The right and left motor speed PWM controllers are in the same "slice",
+  // so we need to specify only the right.
+  uint32_t slice = pwm_gpio_to_slice_num(RIGHT_MOTOR_SPEED);
+
+  // At 125MHz, with a 12-bit PWM counter, if we divide the clock by 1
+  // (no dividing), then the frequency of PWM control is about 30.5 kHz,
+  // or 125000000 / 4095.
+  pwm_config cfg = pwm_get_default_config();
+  pwm_config_set_clkdiv_int_frac(&cfg, clock_divider, 0);
+  pwm_config_set_wrap(&cfg, MAX_MOTOR_POWER);
+  pwm_init(slice, &cfg, true);
 }
 
 
@@ -101,6 +119,18 @@ static void parse_uart_fsm(uint8_t rx_byte) {
     }
 }
 
+static inline void motors_set_power(uint16_t power, bool forward, bool left) {
+  if (power > MAX_MOTOR_POWER) power = MAX_MOTOR_POWER;
+  if (left) {
+    // Note that setting the pin low makes the robot go forward.
+    gpio_put(LEFT_MOTOR_DIRECTION, !forward);
+    pwm_set_gpio_level(LEFT_MOTOR_SPEED, power);
+  } else {
+    gpio_put(RIGHT_MOTOR_DIRECTION, !forward);
+    pwm_set_gpio_level(RIGHT_MOTOR_SPEED, power);
+  }
+}
+
 
 static void process_complete_command(void) {
     // Buffer indices: [0:Header][1-4:L_float][5-8:R_float]
@@ -113,15 +143,14 @@ static void process_complete_command(void) {
 
     // 2. Separate Direction from Speed
     // Remember the requested direction
-    bool l_is_reverse = (l_rads_cmd < 0);
-    bool r_is_reverse = (r_rads_cmd < 0);
+    bool l_is_reverse = (l_rads_cmd >= 0);
+    bool r_is_reverse = (r_rads_cmd >= 0);
 
     // Work only with positive magnitudes for the formula
     float l_speed_mag = fabsf(l_rads_cmd);
     float r_speed_mag = fabsf(r_rads_cmd);
 
     // 3. Apply your coefficients
-    // Example: If speed is 0 -> (1.37 * 0) - 100 = -100.
     float l_pwm_calc = speed_to_pwm(l_speed_mag, l_coeff_a, l_coeff_b);
     float r_pwm_calc = speed_to_pwm(r_speed_mag, r_coeff_a, r_coeff_b);
 
@@ -136,11 +165,12 @@ static void process_complete_command(void) {
     int l_pct = (int)l_pwm_calc;
     int r_pct = (int)r_pwm_calc;
 
-    if (l_is_reverse) l_pct = -l_pct;
-    if (r_is_reverse) r_pct = -r_pct;
+    if (!l_is_reverse) l_pct = -l_pct;
+    if (!r_is_reverse) r_pct = -r_pct;
 
     // 6. Execute
-    set_motor_speed(l_pct, r_pct);
+    motors_set_power(l_pct, l_is_reverse, true);
+    motors_set_power(r_pct, r_is_reverse, false);
     
     // Reset FSM
     current_state = STATE_WAIT_FOR_HEADER;
@@ -151,12 +181,14 @@ int main(void){
     stdio_init_all();     // initialize USB serial (if CMake open USB stdio)
     //printf("Ready for commands\n");  // debug hint
 
-    gpio_init(R_DIR_PIN); gpio_set_dir(R_DIR_PIN, GPIO_OUT); gpio_put(R_DIR_PIN, 0);
-    gpio_init(L_DIR_PIN); gpio_set_dir(L_DIR_PIN, GPIO_OUT); gpio_put(L_DIR_PIN, 0);
+    // gpio_init(R_DIR_PIN); gpio_set_dir(R_DIR_PIN, GPIO_OUT); gpio_put(R_DIR_PIN, 0);
+    // gpio_init(L_DIR_PIN); gpio_set_dir(L_DIR_PIN, GPIO_OUT); gpio_put(L_DIR_PIN, 0);
 
-    pwm_init_20k_on_pin(R_PWM_PIN);
-    pwm_init_20k_on_pin(L_PWM_PIN);
-    set_motor_speed(0, 0);
+    // pwm_init_20k_on_pin(R_PWM_PIN);
+    // pwm_init_20k_on_pin(L_PWM_PIN);
+    motors_init(1);
+    motors_set_power(0, 0, true);
+    motors_set_power(0, 0, false);
 
     current_state = STATE_WAIT_FOR_HEADER;
     byte_count = 0;
