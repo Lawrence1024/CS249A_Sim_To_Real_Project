@@ -59,18 +59,32 @@ class MocapEstimator:
         self.streaming_client.rigid_body_listener = self.mocap_callback
 
         # Start streaming (runs on its own thread).
-        if not self.streaming_client.run(self.stream_type):
-            print("ERROR: Could not start streaming client.")
-            self.streaming_client.shutdown()
         try:
-            time.sleep(1)
-        except KeyboardInterrupt :
-            print("Shutting down MocapEstimator...")
-            self.__del__()
+            if not self.streaming_client.run(self.stream_type):
+                print("ERROR: Could not start streaming client.")
+                self.streaming_client.shutdown()
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt :
+                print("Shutting down MocapEstimator...")
+                self.__del__()
+        except Exception as e:
+            print(f"WARNING: Mocap initialization error (continuing anyway): {e}")
+            # Set streaming_client to None so __del__ doesn't crash
+            try:
+                if hasattr(self, 'streaming_client') and self.streaming_client:
+                    self.streaming_client.shutdown()
+            except:
+                pass
+            self.streaming_client = None
 
 
     def __del__(self):
-        self.streaming_client.shutdown()
+        if hasattr(self, 'streaming_client') and self.streaming_client is not None:
+            try:
+                self.streaming_client.shutdown()
+            except Exception:
+                pass  # Ignore errors during cleanup
 
     def mocap_callback(self, id, pos, rot):
         if id == self.target_id:

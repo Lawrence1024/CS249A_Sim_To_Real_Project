@@ -115,6 +115,7 @@ class HardwareInterface:
         self.ble_sender = PololuBLE()
         self._connected = False
         self.max_angular_velocity = max_angular_velocity
+        self._event_loop = None  # Will be set by run_pololu_hardware.py
     
     async def connect(self):
         """Connect to BLE device.
@@ -178,4 +179,53 @@ class HardwareInterface:
             True if connected, False otherwise
         """
         return self._connected
+    
+    def send_wheel_speed_command_sync(self, left_speed: float, right_speed: float):
+        """Synchronous wrapper for send_wheel_speed_command.
+        
+        Uses the stored event loop to run the async command synchronously.
+        This is called from the simulation loop which is not async.
+        
+        Args:
+            left_speed: Motor speed from Scenic behavior (0-100 range)
+            right_speed: Motor speed from Scenic behavior (0-100 range)
+        """
+        loop = self._event_loop
+        if loop is None:
+            print("[EVENT_LOOP] WARNING: No event loop stored, using fallback")
+            # Fallback: try to get current loop
+            try:
+                loop = asyncio.get_running_loop()
+                print("[EVENT_LOOP] Found running loop, scheduling task")
+                # If loop is running, schedule as task (fire and forget)
+                asyncio.create_task(
+                    self.send_wheel_speed_command(left_speed, right_speed)
+                )
+                return
+            except RuntimeError:
+                print("[EVENT_LOOP] No running loop, creating temporary one")
+                # No loop running, create temporary one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(
+                        self.send_wheel_speed_command(left_speed, right_speed)
+                    )
+                finally:
+                    loop.close()
+                return
+        
+        # Use stored loop
+        if loop.is_running():
+            print("[EVENT_LOOP] Loop is running, using run_coroutine_threadsafe")
+            # Loop is running in another thread/context, schedule as task
+            asyncio.run_coroutine_threadsafe(
+                self.send_wheel_speed_command(left_speed, right_speed),
+                loop
+            )
+        else:
+            # Loop exists but not running, run until complete
+            loop.run_until_complete(
+                self.send_wheel_speed_command(left_speed, right_speed)
+            )
 

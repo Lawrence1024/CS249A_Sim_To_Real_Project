@@ -97,10 +97,8 @@ class HardwareSimulation(Simulation):
                 if cmd:
                     left, right = cmd
                     try:
-                        # No outer event loop here; safe to use asyncio.run
-                        asyncio.run(
-                            self.interface.send_wheel_speed_command(left, right)
-                        )
+                        # Use synchronous wrapper that uses the stored event loop
+                        self.interface.send_wheel_speed_command_sync(left, right)
                     except Exception as e:
                         print(f"[HW] Error sending command: {e}")
 
@@ -149,11 +147,15 @@ class HardwareSimulation(Simulation):
     def destroy(self):
         """Clean up hardware at the end of the simulation."""
         try:
-            asyncio.run(self.interface.send_wheel_speed_command(0, 0))
+            self.interface.send_wheel_speed_command_sync(0, 0)
         except Exception:
             pass
         try:
-            asyncio.run(self.interface.disconnect())
+            loop = getattr(self.interface, '_event_loop', None)
+            if loop:
+                loop.run_until_complete(self.interface.disconnect())
+            else:
+                asyncio.run(self.interface.disconnect())
         except Exception:
             pass
 
