@@ -124,100 +124,21 @@ class PololuBLE:
     def is_connected(self) -> bool:
         """Check if connected."""
         return self._connected and self.client and self.client.is_connectedble_sender
-    
-    # def send_wheel_speed_command(self, left_speed: float, right_speed: float) -> bool:
-    #     """Send wheel speed command to Pololu robot.
-        
-    #     Args:
-    #         left_speed: Speed for left wheel (-255 to 255)
-    #         right_speed: Speed for right wheel (-255 to 255)
-            
-    #     Returns:
-    #         True if sent successfully, False otherwise
-    #     """
-    #     # Clamp speeds to valid range
-    #     left_speed = max(-255, min(255, left_speed))
-    #     right_speed = max(-255, min(255, right_speed))
-        
-    #     # Create command bytes
-    #     command = bytes([left_speed & 0xFF, right_speed & 0xFF])
-        
-    #     # Send command
-    #     return asyncio.run(self.send_command(command))
-    
 
-    def send_wheel_speed_command(self, left_rads: float, right_rads: float) -> bytes:
+    async def send_wheel_speed_command(self, left_rads: float, right_rads: float):
         # Use 'A' as the header character byte
         command_char = b'A' 
         # '<cff' packs 1-byte char, 4-byte float, 4-byte float (Total 9 bytes)
         command_bytes = struct.pack('<cff', command_char, left_rads, right_rads)
         
         # You would then call your BLE send function: 
-        # asyncio.run(self.send_command(command_bytes))
-        return command_bytes
+        await self.send_command(command_bytes)
 
 
-# # Global instance for convenience
-# _global_instance: Optional[PololuBLE] = None
 
 
-# def send_ble_command(command: Union[bytes, str], auto_connect: bool = True) -> bool:
-#     """Send BLE command to Pololu (synchronous wrapper).
-    
-#     This is a convenience function that uses a global instance.
-#     For better control, use PololuBLE class directly.
-    
-#     Args:
-#         command: Command to send (bytes or string)
-#         auto_connect: Automatically connect if not connected
-        
-#     Returns:
-#         True if sent successfully, False otherwise
-#     """
-#     global _global_instance
-    
-#     async def _send():
-#         nonlocal _global_instance
-#         if _global_instance is None:
-#             _global_instance = PololuBLE()
-        
-#         if not _global_instance.is_connected():
-#             if auto_connect:
-#                 if not await _global_instance.connect():
-#                     return False
-#             else:
-#                 print("Not connected. Please connect first.")
-#                 return False
-        
-#         return await _global_instance.send_command(command)
-    
-#     return asyncio.run(_send())
 
 
-# async def send_ble_command_async(command: Union[bytes, str], auto_connect: bool = True) -> bool:
-#     """Send BLE command to Pololu (async version).
-    
-#     Args:
-#         command: Command to send (bytes or string)
-#         auto_connect: Automatically connect if not connected
-        
-#     Returns:
-#         True if sent successfully, False otherwise
-#     """
-#     global _global_instance
-    
-#     if _global_instance is None:
-#         _global_instance = PololuBLE()
-    
-#     if not _global_instance.is_connected():
-#         if auto_connect:
-#             if not await _global_instance.connect():
-#                 return False
-#         else:
-#             print("Not connected. Please connect first.")
-#             return False
-    
-#     return await _global_instance.send_command(command)
 
 
 # Example usage

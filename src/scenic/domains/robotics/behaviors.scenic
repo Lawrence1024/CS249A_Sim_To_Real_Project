@@ -9,6 +9,8 @@ from scenic.core.geometry import headingOfSegment, normalizeAngle
 
 behavior LineFollowingBehavior(forwardSpeed=50, turnSpeed=30):
     """Behavior for following a line using left and right sensors."""
+    print("hi---------------")
+
     while True:
         # Simple line following logic without sensors for now
         # Move forward by default
@@ -20,12 +22,12 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, headingOffset=
     """Behavior for patrolling between waypoints using improved proportional control."""
     currentWaypoint = 0
     lastAngleError = 0
-    
     while True:
         target = waypoints[currentWaypoint]
         
         # Compute angle error to target
         targetHeading = headingOfSegment(self.position, target)
+        print(self.position)
         effectiveHeading = normalizeAngle(self.heading + headingOffset)
         angle = normalizeAngle(targetHeading - effectiveHeading)
         distance = distance from self to target
@@ -75,9 +77,9 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, headingOffset=
 
 behavior SquareTrackBehavior(forwardSpeed=50, turnSpeed=10, headingOffset=0 deg):
     """Behavior for following a square race track using PatrolBehavior."""
-    
     # Define waypoints that form a square (middle of the track, well within bounds)
     waypoints = [(-1.5, 1.5), (1.5, 1.5), (1.5, -1.5), (-1.5, -1.5)]
     
     # Use PatrolBehavior for waypoint following
     do PatrolBehavior(waypoints, forwardSpeed, turnSpeed, headingOffset)
+

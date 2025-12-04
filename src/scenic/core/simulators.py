@@ -525,6 +525,7 @@ class Simulation(abc.ABC):
             self.executeActions(allActions)
 
             # Run the simulation for a single step and read its state back into Scenic
+            print("Stepping simulator...\n\n")
             self.step()
             self.currentTime += 1
             self.updateObjects()

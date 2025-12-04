@@ -40,3 +40,9 @@ pico_enable_stdio_uart(test_bluetooth 0)
 target_link_libraries(test_bluetooth pico_stdlib pololu_3pi_2040_robot)
 
 
+add_executable(pololu_ble_fsm src/bluetooth_pololu_fsm.c)
+pico_add_extra_outputs(pololu_ble_fsm)
+pico_enable_stdio_usb(pololu_ble_fsm 1)
+pico_enable_stdio_uart(pololu_ble_fsm 0)
+target_link_libraries(pololu_ble_fsm pico_stdlib pololu_3pi_2040_robot)
+

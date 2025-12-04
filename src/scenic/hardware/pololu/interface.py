@@ -104,12 +104,18 @@ class HardwareInterface:
             raise RuntimeError("BLE not connected. Call connect() first.")
         
         # Clamp speeds to valid range
-        left_speed = max(-255, min(255, int(left_speed)))
-        right_speed = max(-255, min(255, int(right_speed)))
+        # left_speed = max(-255, min(255, int(left_speed)))
+        # right_speed = max(-255, min(255, int(right_speed)))
         
         # Create command bytes
-        command = bytes([left_speed & 0xFF, right_speed & 0xFF])
+        #command = bytes([left_speed & 0xFF, right_speed & 0xFF])
         
+        if left_speed < 0:
+            command = b'F'
+        elif left_speed > 0:
+            command = b'B'
+        else:
+            command = b'S'
         # Send command via async interface
         await self.ble_sender.send_command(command)
     

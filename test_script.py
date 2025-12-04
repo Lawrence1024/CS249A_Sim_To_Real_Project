@@ -20,10 +20,10 @@ async def main():
             # send action via BLE
             if pose.x>0.0:
                 left_speed = 100
-                right_speed = 0
+                right_speed = 100
             else:
                 left_speed = -100
-                right_speed = 0
+                right_speed = -100
             await ble_sender.send_wheel_speed_command(left_speed, right_speed)
     
             print(pose)

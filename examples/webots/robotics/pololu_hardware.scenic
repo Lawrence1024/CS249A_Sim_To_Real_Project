@@ -14,6 +14,8 @@ workspace = Workspace(workspace_region)
 
 # Create a Pololu robot that follows the square track
 # Position at first waypoint to start the track properly
+print("hi--------------------------------------\n\n\n")
+print("hihihihi--------------------------------------\n\n\n")
 robot = new HardwarePololuRobot at (-1.5, -1.5, 0.016), with behavior SquareTrackBehavior(forwardSpeed=80, turnSpeed=60, headingOffset=-90 deg)
 
 # Terminate after 120 seconds
