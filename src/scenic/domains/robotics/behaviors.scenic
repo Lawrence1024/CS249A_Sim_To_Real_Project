@@ -85,7 +85,7 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, headingOffset=
 behavior SquareTrackBehavior(forwardSpeed=50, turnSpeed=10, headingOffset=0 deg):
     """Behavior for following a square race track using PatrolBehavior."""
     # Define waypoints that form a square (middle of the track, well within bounds)
-    waypoints = [(-0.32,-0.45,0.03), (-0.31,0.37,0.03), (-1.02,0.357,0.03), (-1.03,-0.47,0.03)]
+    waypoints = [(-0.32,-0.46,0.03), (-0.32,0.36,0.03), (-1.02,0.36,0.03), (-1.02,-0.46,0.03)]
     
     # Use PatrolBehavior for waypoint following
     do PatrolBehavior(waypoints, forwardSpeed, turnSpeed, headingOffset)

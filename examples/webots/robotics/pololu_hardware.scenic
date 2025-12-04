@@ -1,21 +1,26 @@
 """
-Square racetrack example using the robotics domain.
+Rectangular racetrack example using the physical Pololu robot.
 
-This demonstrates a robot following a square race track with inner and outer boundaries.
+This demonstrates a robot following a rectangular race track with inner and outer boundaries.
 """
 
-# model scenic.simulators.webots.robotics_model
 model scenic.hardware.pololu.model
 from scenic.domains.robotics.behaviors import SquareTrackBehavior
 
-# Define a workspace region (4.5x4.5 meter area centered at origin to accommodate robot size)
-workspace_region = RectangularRegion((0, 0, 0.02465), 0, 4.5, 4.5)
+# Define a workspace region (3x3 meter area centered at (-0.67, -0.05) for track)
+workspace_region = RectangularRegion((-0.67, -0.05, 0.02465), 0, 3, 3)
 workspace = Workspace(workspace_region)
 
-# Create a Pololu robot that follows the square track
+# Create a Pololu robot that follows the rectangular track
+# Waypoints (hardcoded in behavior): (-0.32,-0.46), (-0.32,0.36), (-1.02,0.36), (-1.02,-0.46)
+# Forms a 0.7m x 0.82m rectangle
 # Position at first waypoint to start the track properly
 # Height 0.02465m = body center height (5.8mm clearance + 18.85mm half-height)
-robot = new HardwarePololuRobot at (-1.5, -1.5, 0.02465), with behavior SquareTrackBehavior(forwardSpeed=80, turnSpeed=100, headingOffset=0 deg)
+robot = new HardwarePololuRobot at (-0.32, -0.46, 0.02465), with behavior SquareTrackBehavior(
+    forwardSpeed=80, 
+    turnSpeed=100, 
+    headingOffset=0 deg
+)
 
 # Terminate after 120 seconds
 terminate after 120 seconds

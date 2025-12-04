@@ -48,12 +48,16 @@ DEF GROUND Solid {
         metalness 0
       }
       geometry DEF GROUND_PLANE Plane {
-        size 10 10
+        size 3 3
       }
     }
-    # Outer track lines - NORTH (red) - from x=-2 to x=2
+    # Rectangular track for new waypoints
+    # Waypoints: (-0.32,-0.46), (-0.32,0.36), (-1.02,0.36), (-1.02,-0.46)
+    # Track center: (-0.67, -0.05), width: 0.7m, height: 0.82m
+    
+    # Outer track lines - NORTH (red) - pushed very far out to y=0.76
     Transform {
-      translation 0 2 0.01
+      translation -0.67 0.76 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -62,15 +66,14 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 4 0.1 0.02
+            size 1.7 0.02 0.02
           }
         }
       ]
     }
-    # Outer track lines - EAST (red) - from y=-2 to y=2
+    # Outer track lines - EAST (red) - pushed very far out to x=0.08
     Transform {
-      translation 2 0 0.01
-      rotation 0 0 1 1.5708
+      translation 0.08 -0.05 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -79,15 +82,14 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 4 0.1 0.02
+            size 0.02 1.72 0.02
           }
         }
       ]
     }
-    # Outer track lines - SOUTH (red) - from x=-2 to x=2
+    # Outer track lines - SOUTH (red) - pushed very far out to y=-0.86
     Transform {
-      translation 0 -2 0.01
-      rotation 0 0 1 3.14159
+      translation -0.67 -0.86 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -96,15 +98,14 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 4 0.1 0.02
+            size 1.7 0.02 0.02
           }
         }
       ]
     }
-    # Outer track lines - WEST (red) - from y=-2 to y=2
+    # Outer track lines - WEST (red) - pushed very far out to x=-1.42
     Transform {
-      translation -2 0 0.01
-      rotation 0 0 1 4.71239
+      translation -1.42 -0.05 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -113,14 +114,14 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 4 0.1 0.02
+            size 0.02 1.72 0.02
           }
         }
       ]
     }
-    # Inner track lines - NORTH (blue) - from x=-1 to x=1
+    # Waypoint path lines - NORTH (blue) - pushed in to y=0.26
     Transform {
-      translation 0 1 0.01
+      translation -0.67 0.26 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -129,15 +130,14 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 2 0.1 0.02
+            size 0.5 0.02 0.02
           }
         }
       ]
     }
-    # Inner track lines - EAST (blue) - from y=-1 to y=1
+    # Waypoint path lines - EAST (blue) - pushed in to x=-0.42
     Transform {
-      translation 1 0 0.01
-      rotation 0 0 1 1.5708
+      translation -0.42 -0.05 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -146,15 +146,14 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 2 0.1 0.02
+            size 0.02 0.62 0.02
           }
         }
       ]
     }
-    # Inner track lines - SOUTH (blue) - from x=-1 to x=1
+    # Waypoint path lines - SOUTH (blue) - pushed in to y=-0.36
     Transform {
-      translation 0 -1 0.01
-      rotation 0 0 1 3.14159
+      translation -0.67 -0.36 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -163,15 +162,14 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 2 0.1 0.02
+            size 0.5 0.02 0.02
           }
         }
       ]
     }
-    # Inner track lines - WEST (blue) - from y=-1 to y=1
+    # Waypoint path lines - WEST (blue) - pushed in to x=-0.92
     Transform {
-      translation -1 0 0.01
-      rotation 0 0 1 4.71239
+      translation -0.92 -0.05 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -180,7 +178,7 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 2 0.1 0.02
+            size 0.02 0.62 0.02
           }
         }
       ]
@@ -190,9 +188,10 @@ DEF GROUND Solid {
   locked TRUE
   contactMaterial "ground_material"
 }
-# Waypoint markers
+# Waypoint markers (green spheres at each waypoint)
+# WP0: (-0.32, -0.46, 0.03)
 Transform {
-  translation -1.5 1.5 0.05
+  translation -0.32 -0.46 0.03
   children [
     Shape {
       appearance PBRAppearance {
@@ -201,13 +200,14 @@ Transform {
         metalness 0
       }
       geometry Sphere {
-        radius 0.05
+        radius 0.03
       }
     }
   ]
 }
+# WP1: (-0.32, 0.36, 0.03)
 Transform {
-  translation 1.5 1.5 0.05
+  translation -0.32 0.36 0.03
   children [
     Shape {
       appearance PBRAppearance {
@@ -216,13 +216,14 @@ Transform {
         metalness 0
       }
       geometry Sphere {
-        radius 0.05
+        radius 0.03
       }
     }
   ]
 }
+# WP2: (-1.02, 0.36, 0.03)
 Transform {
-  translation 1.5 -1.5 0.05
+  translation -1.02 0.36 0.03
   children [
     Shape {
       appearance PBRAppearance {
@@ -231,13 +232,14 @@ Transform {
         metalness 0
       }
       geometry Sphere {
-        radius 0.05
+        radius 0.03
       }
     }
   ]
 }
+# WP3: (-1.02, -0.46, 0.03)
 Transform {
-  translation -1.5 -1.5 0.05
+  translation -1.02 -0.46 0.03
   children [
     Shape {
       appearance PBRAppearance {
@@ -246,13 +248,13 @@ Transform {
         metalness 0
       }
       geometry Sphere {
-        radius 0.05
+        radius 0.03
       }
     }
   ]
 }
 DEF POLOLU_ROBOT Robot {
-  translation 0 0 0.02465
+  translation -0.32 -0.46 0.02465
   rotation 0 0 1 0
   controller "simple_robot_controller"
   boundingObject Box {
