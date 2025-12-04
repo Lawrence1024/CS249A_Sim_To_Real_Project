@@ -254,11 +254,11 @@ Transform {
   ]
 }
 DEF POLOLU_ROBOT Robot {
-  translation -0.32 -0.46 0.02465
+  translation -0.32 -0.46 0.01885
   rotation 0 0 1 0
   controller "simple_robot_controller"
   boundingObject Box {
-    size 0.0912 0.066 0.0377
+    size 0.0912 0.066 0.0261
   }
   physics Physics {
     density -1
@@ -266,7 +266,7 @@ DEF POLOLU_ROBOT Robot {
     centerOfMass [ 0 0 0 ]
   }
   children [
-    # Main body box (91.2mm length × 66mm width × 37.7mm height)
+    # Main body box (91.2mm length × 66mm width × 26.1mm height)
     # Ground clearance: 5.8mm
     Shape {
       appearance PBRAppearance {
@@ -275,7 +275,7 @@ DEF POLOLU_ROBOT Robot {
         metalness 0
       }
       geometry Box {
-        size 0.0912 0.066 0.0377
+        size 0.0912 0.066 0.0261
       }
     }
     # Left wheel (32mm diameter, 6.8mm width)
@@ -283,7 +283,7 @@ DEF POLOLU_ROBOT Robot {
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor 0.0012 0.0514 -0.00865
+        anchor 0.0012 0.0514 -0.00285
       }
       device [
         RotationalMotor {
@@ -292,7 +292,7 @@ DEF POLOLU_ROBOT Robot {
         }
       ]
       endPoint Solid {
-        translation 0.0012 0.0514 -0.00865
+        translation 0.0012 0.0514 -0.00285
         name "leftWheel"
         children [
           Transform {
@@ -332,7 +332,7 @@ DEF POLOLU_ROBOT Robot {
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor 0.0012 -0.0514 -0.00865
+        anchor 0.0012 -0.0514 -0.00285
       }
       device [
         RotationalMotor {
@@ -341,7 +341,7 @@ DEF POLOLU_ROBOT Robot {
         }
       ]
       endPoint Solid {
-        translation 0.0012 -0.0514 -0.00865
+        translation 0.0012 -0.0514 -0.00285
         name "rightWheel"
         children [
           Transform {
@@ -379,7 +379,7 @@ DEF POLOLU_ROBOT Robot {
     # Ball caster at back (12.7mm diameter)
     # Positioned at back of robot (-45.6mm), touching ground
     Solid {
-      translation -0.0456 0 -0.0183
+      translation -0.0456 0 -0.0125
       children [
         Shape {
           appearance PBRAppearance {
