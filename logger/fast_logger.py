@@ -26,14 +26,14 @@ class FastLogger:
     def __del__(self):
         self.close()
 
-    def log(self, timestamp: float, step_count: int, pos: tuple, quat: tuple, target_id: int):
+    def log(self, timestamp: float, step_count: int, pos: tuple, headings: tuple, target_id: int):
         """
         Accepts raw arguments.
         pos: tuple/list of (x, y, z)
         quat: tuple/list of (qx, qy, qz, qw)
         """
         # We pack data into a tuple immediately to ensure immutability in the queue
-        data_tuple = (timestamp, step_count, *pos, *quat, target_id)
+        data_tuple = (timestamp, step_count, *pos, *headings, target_id)
         
         try:
             self.q.put(data_tuple, block=False)
