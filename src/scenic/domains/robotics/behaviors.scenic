@@ -7,12 +7,21 @@ and basic navigation patterns.
 from scenic.domains.robotics.actions import *
 from scenic.core.geometry import headingOfSegment, normalizeAngle
 
+import time
+from logger.fast_logger import FastLogger
+logger = FastLogger()
+
+behavior LineFollowingBehavior(forwardSpeed=50, turnSpeed=30):
+    """Behavior for following a line using left and right sensors."""
+    print("hi---------------")
 
 behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, waypointThreshold=0.1, headingOffset=0 deg):
     """Behavior for patrolling between waypoints using improved proportional control."""
     currentWaypoint = 0
     lastAngleError = 0
+    step_count = 0
     while True:
+        step_count+=1
         target = waypoints[currentWaypoint]
         
         # Compute angle error to target
@@ -71,6 +80,11 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, waypointThresh
             currentWaypoint = (currentWaypoint + 1) % len(waypoints)
             lastAngleError = 0  # Reset error when switching waypoints
             wait
+
+        logger.log(timestamp = time.perf_counter_ns(), step_count = step_count,
+                                pos = [self.position.x,self.position.y,self.position.z],
+                                headings = [self.heading, targetHeading, effectiveHeading, angle],
+                                target_id = currentWaypoint)
 
 behavior SquareTrackBehavior(forwardSpeed=50, turnSpeed=10, waypointThreshold=0.1, headingOffset=0 deg):
     """Behavior for following a square race track using PatrolBehavior."""

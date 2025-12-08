@@ -16,6 +16,8 @@ if _scenic_root not in sys.path:
 
 from mocap.mocap_estimator import MocapEstimator, Pose
 from pololu_bluetooth_testing.pololu_ble import PololuBLE
+#from mocap.mocap_dummy_estimator import MocapDummyEstimator as MocapEstimator, Pose
+#from pololu_bluetooth_testing.pololu_ble_dummy import PololuBLEDummy as PololuBLE
 
 # Dummy mocap classes commented out - using real mocap system
 # class Pose:
