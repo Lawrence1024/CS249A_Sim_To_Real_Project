@@ -77,16 +77,6 @@ def get_latest_log_pair(log_dir: Optional[str] = None, extension: str = ".bin") 
     return sim_file, real_file
 
 
-def _normalize_lap_time_gap(lap_time_gap_pct: float) -> float:
-    """Convert lap time gap percent into [0, 1] with a soft cap."""
-    return min(1.0, abs(lap_time_gap_pct) / 100.0)
-
-
-def _normalize_area_gap(ratio_diff: float) -> float:
-    """Ensure area gap ratio is clamped to [0, 1]."""
-    return max(0.0, min(1.0, ratio_diff))
-
-
 def compute_gap_metric(
     sim_log_file: str,
     real_log_file: str,
@@ -96,13 +86,10 @@ def compute_gap_metric(
     Compute sim-to-real gap metrics from two binary log files.
 
     Returns a dictionary containing:
-        - lap_time_sim, lap_time_real
-        - lap_time_gap_pct
-        - normalized_time_gap
-        - normalized_area_gap
-        - combined_error (averaged normalized_time_gap & normalized_area_gap)
-        - area_diff
-        - ratio_diff
+        - lap_time_sim, lap_time_real, lap_time_gap_pct
+        - normalized_time_gap, normalized_area_gap, boundary_gap
+        - combined_error
+        - area_diff, ratio_diff
     """
     for path in (sim_log_file, real_log_file):
         if not path or not os.path.exists(path):
@@ -126,31 +113,49 @@ def compute_gap_metric(
     if total_time_sim == 0 or total_time_real == 0:
         raise GapComputationError("Lap times could not be computed; check target_id transitions.")
 
-    lap_time_gap_pct = (total_time_real - total_time_sim) / total_time_sim * 100.0
-
     _, _, polygon_sim = ga.calculate_buffered_area_gap(lap_df_sim)
     ratio_diff, area_diff, polygon_real = ga.calculate_buffered_area_gap(
         lap_df_real, comparison_polygon=polygon_sim
     )
 
-    normalized_time_gap = _normalize_lap_time_gap(lap_time_gap_pct)
-    normalized_area_gap = _normalize_area_gap(ratio_diff)
-    combined_error = min(1.0, 0.5 * normalized_time_gap + 0.5 * normalized_area_gap)
+    # Compute normalized objectives in gap_analyzer
+    objectives = ga.compute_gap_objectives(
+        lap_df_sim,
+        lap_df_real,
+        ratio_diff,
+        area_diff,
+        total_time_sim,
+        total_time_real,
+        waypoints=ga.WAYPOINTS,
+    )
+
+    # Combine with priority weighting
+    combined_error = min(
+        1.0,
+        0.4 * objectives["boundary_gap"]
+        + 0.35 * objectives["normalized_area_gap"]
+        + 0.25 * objectives["normalized_time_gap"],
+    )
 
     metrics: Dict[str, Any] = {
         "lap_time_sim": total_time_sim,
         "lap_time_real": total_time_real,
-        "lap_time_gap_pct": lap_time_gap_pct,
-        "normalized_time_gap": normalized_time_gap,
-        "normalized_area_gap": normalized_area_gap,
+        "lap_time_gap_pct": objectives["lap_time_gap_pct"],
+        "time_gap_ratio": objectives["time_gap_ratio"],
+        "normalized_time_gap": objectives["normalized_time_gap"],
+        "normalized_area_gap": objectives["normalized_area_gap"],
+        "boundary_gap": objectives["boundary_gap"],
         "combined_error": combined_error,
         "area_diff": area_diff,
         "ratio_diff": ratio_diff,
+        "boundary_violation_sim": objectives["boundary_violation_sim"],
+        "boundary_violation_real": objectives["boundary_violation_real"],
     }
 
     log.info(
-        "Gap metrics -> lap_time_gap_pct: %.2f%% | area_ratio: %.4f | combined_error: %.4f",
-        lap_time_gap_pct,
+        "Gap metrics -> boundary_gap: %.2f | lap_time_gap_pct: %.2f%% | area_ratio: %.4f | combined_error: %.4f",
+        objectives["boundary_gap"],
+        objectives["lap_time_gap_pct"],
         ratio_diff,
         combined_error,
     )

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
 import sys
 import os
+import boundary_check
 
 
 # --- CONFIGURATION ---
@@ -164,6 +165,62 @@ def calculate_buffered_area_gap(lap_df: pd.DataFrame, comparison_polygon: Polygo
     ratio_diff = area_diff / area_union if area_union > 0 else 0.0
 
     return ratio_diff, area_diff, current_polygon
+
+
+def boundary_violation_exists(lap_df: pd.DataFrame, waypoints=WAYPOINTS, limit_dist: float = 0.3) -> bool:
+    """Return True if any point in the lap trajectory violates the boundary."""
+    for _, row in lap_df.iterrows():
+        if boundary_check.check_square_boundary_violation(
+            (row["x"], row["y"]), waypoints, limit_dist=limit_dist
+        ):
+            return True
+    return False
+
+
+def compute_gap_objectives(
+    lap_df_sim: pd.DataFrame,
+    lap_df_real: pd.DataFrame,
+    ratio_diff: float,
+    area_diff: float,
+    total_time_sim: float,
+    total_time_real: float,
+    waypoints=WAYPOINTS,
+    boundary_limit_dist: float = 0.3,
+) -> Dict[str, float]:
+    """
+    Compute normalized objectives for sim-to-real gap:
+      - boundary_gap: 1 if exactly one run violates the boundary, else 0.
+      - normalized_area_gap: non-overlap area normalized by waypoint polygon area (fallback to ratio_diff).
+      - normalized_time_gap: (real - sim) / sim, clamped to [0,1].
+    Also returns raw ratios for transparency.
+    """
+    # Boundary objective
+    violation_sim = boundary_violation_exists(lap_df_sim, waypoints=waypoints, limit_dist=boundary_limit_dist)
+    violation_real = boundary_violation_exists(lap_df_real, waypoints=waypoints, limit_dist=boundary_limit_dist)
+    boundary_gap = 1.0 if (violation_sim != violation_real) else 0.0
+
+    # Area objective normalized by waypoint polygon area
+    waypoint_polygon_area = Polygon(waypoints).area if waypoints else 0.0
+    if waypoint_polygon_area > 0:
+        normalized_area_gap = max(0.0, min(1.0, area_diff / waypoint_polygon_area))
+    else:
+        normalized_area_gap = max(0.0, min(1.0, ratio_diff))
+
+    # Time objective normalized
+    raw_time_gap_ratio = (total_time_real - total_time_sim) / total_time_sim if total_time_sim else 0.0
+    normalized_time_gap = max(0.0, min(1.0, raw_time_gap_ratio))
+
+    lap_time_gap_pct = raw_time_gap_ratio * 100.0
+
+    return {
+        "boundary_gap": boundary_gap,
+        "boundary_violation_sim": violation_sim,
+        "boundary_violation_real": violation_real,
+        "normalized_area_gap": normalized_area_gap,
+        "normalized_time_gap": normalized_time_gap,
+        "time_gap_ratio": raw_time_gap_ratio,
+        "lap_time_gap_pct": lap_time_gap_pct,
+    }
 
 def visualize_comparison(lap_df_sim: pd.DataFrame, lap_df_real: pd.DataFrame, polygon_sim: Polygon, polygon_real: Polygon):
     """
