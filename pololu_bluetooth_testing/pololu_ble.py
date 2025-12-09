@@ -106,7 +106,7 @@ class PololuBLE:
                 cmd_bytes = command
             
             await self.client.write_gatt_char(CHAR_UUID, cmd_bytes, response=False)
-            print(f"Sent: {cmd_bytes}")
+            #print(f"Sent: {cmd_bytes}")
             return True
         except Exception as e:
             print(f"Send command failed: {e}")

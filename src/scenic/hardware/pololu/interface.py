@@ -113,7 +113,6 @@ class HardwareInterface:
                                   This should match your hardware's max motor velocity
         """
         self.mocap_estimator = MocapEstimator(target_id=mocap_target_id)  # Real mocap system
-        # self.mocap_estimator = MocapEstimator()  # Dummy mocap for testing (commented out)
         self.ble_sender = PololuBLE()
         self._connected = False
         self.max_angular_velocity = max_angular_velocity

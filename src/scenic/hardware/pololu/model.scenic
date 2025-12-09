@@ -97,7 +97,7 @@ class HardwarePololuRobot(PololuRobot):
                 self.yaw = normalizeAngle(yaw - math.pi / 2.0)
                 
                 # DIAGNOSTIC: Log mocap values
-                print(f"[MOCAP] pos={self.position} rawYaw={yaw:.3f} → heading={self.heading:.3f}")
+                #print(f"[MOCAP] pos={self.position} rawYaw={yaw:.3f} → heading={self.heading:.3f}")
                 
             except Exception as e:
                 print(f"Error updating position from mocap: {e}")

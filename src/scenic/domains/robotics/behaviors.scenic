@@ -32,15 +32,15 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, headingOffset=
         target = waypoints[currentWaypoint]
         
         # Compute angle error to target
-        print(f"[DEBUG] self.heading type={type(self.heading)}, value={self.heading}, hasattr={hasattr(self, 'heading')}")
+        #print(f"[DEBUG] self.heading type={type(self.heading)}, value={self.heading}, hasattr={hasattr(self, 'heading')}")
         targetHeading = headingOfSegment(self.position, target)
         effectiveHeading = normalizeAngle(self.heading + headingOffset)
         angle = normalizeAngle(targetHeading - effectiveHeading)
         distance = distance from self to target
         
         # DIAGNOSTIC: Log all key navigation values
-        print(f"[NAV] WP{currentWaypoint} pos=({self.position.x:.2f},{self.position.y:.2f}) dist={distance:.2f}m")
-        print(f"[NAV] heading={self.heading:.3f} targetH={targetHeading:.3f} effectiveH={effectiveHeading:.3f} angle={angle:.3f}")
+        #print(f"[NAV] WP{currentWaypoint} pos=({self.position.x:.2f},{self.position.y:.2f}) dist={distance:.2f}m")
+        #print(f"[NAV] heading={self.heading:.3f} targetH={targetHeading:.3f} effectiveH={effectiveHeading:.3f} angle={angle:.3f}")
         
         if distance > 0.1:
             # Improved proportional control with gain adjustment
@@ -77,7 +77,7 @@ behavior PatrolBehavior(waypoints, forwardSpeed=50, turnSpeed=40, headingOffset=
             lastAngleError = angle
             
             # DIAGNOSTIC: Log motor commands
-            print(f"[MOTOR] L={leftSpeed:.1f} R={rightSpeed:.1f}")
+            #print(f"[MOTOR] L={leftSpeed:.1f} R={rightSpeed:.1f}")
             
             # Take proportional turn action
             take SetMotorAction(leftSpeed, rightSpeed)

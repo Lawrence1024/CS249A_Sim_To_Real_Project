@@ -9,7 +9,7 @@ class FastLogger:
         self.flush_interval = flush_interval
         if filename is None:
             timestamp = int(time.time())
-            filename = f'fast_log_{timestamp}.bin'
+            filename = f'.examples/webots/robotics/log/fast_log_{timestamp}.bin'
         self.filename = filename
         self.stop_flag = False
         
