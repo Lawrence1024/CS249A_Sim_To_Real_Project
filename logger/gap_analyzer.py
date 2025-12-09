@@ -343,87 +343,87 @@ def run_sim_to_real_analysis(sim_file: str, real_file: str, do_visualize: bool =
 
 """up real, down sim"""
 
-# def run_sim_to_real_analysis(sim_file: str, real_file: str, do_visualize: bool = False):
-#     """
-#     Main function to run the sim-to-real gap analysis.
+def run_sim_to_real_analysis(sim_file: str, real_file: str, do_visualize: bool = False):
+    """
+    Main function to run the sim-to-real gap analysis.
     
-#     NOTE: This version is modified to use the hardcoded/simulated data 
-#     (create_simulated_data) for testing purposes, bypassing file reading.
-#     """
-#     print("--- 1. LOADING DATA ---")
+    NOTE: This version is modified to use the hardcoded/simulated data 
+    (create_simulated_data) for testing purposes, bypassing file reading.
+    """
+    print("--- 1. LOADING DATA ---")
 
-#     # -------------------------------------------------------------
-#     # 🔥 FIX: BYPASSING FILE READING AND USING SIMULATED DATA DIRECTLY
-#     # -------------------------------------------------------------
-#     try:
-#         # Use the hardcoded functions defined below to generate test data
-#         df_sim = create_simulated_data(is_real=False) 
-#         df_real = create_simulated_data(is_real=True)  
-#         print("Successfully generated simulated data for Sim and Real.")
+    # -------------------------------------------------------------
+    # 🔥 FIX: BYPASSING FILE READING AND USING SIMULATED DATA DIRECTLY
+    # -------------------------------------------------------------
+    try:
+        # Use the hardcoded functions defined below to generate test data
+        df_sim = create_simulated_data(is_real=False) 
+        df_real = create_simulated_data(is_real=True)  
+        print("Successfully generated simulated data for Sim and Real.")
 
-#         # --- Original file reading code (now commented out) ---
-#         # try:
-#         #     from log_decoder import LogDecoder
-#         # except ImportError:
-#         #     print("Error: log_decoder.py not found. Ensure it is in the same directory.")
-#         #     return
-#         # df_sim = LogDecoder.decode_df(sim_file)
-#         # df_real = LogDecoder.decode_df(real_file)
-#         # -----------------------------------------------------
+        # --- Original file reading code (now commented out) ---
+        # try:
+        #     from log_decoder import LogDecoder
+        # except ImportError:
+        #     print("Error: log_decoder.py not found. Ensure it is in the same directory.")
+        #     return
+        # df_sim = LogDecoder.decode_df(sim_file)
+        # df_real = LogDecoder.decode_df(real_file)
+        # -----------------------------------------------------
 
-#     except NameError:
-#         print("FATAL ERROR: The function 'create_simulated_data' is not defined in the accessible scope.")
-#         print("Please ensure you copied the entire 'SIMULATED DATA FOR TESTING' section from the previous response.")
-#         return
-#     except Exception as e:
-#         print(f"An unexpected error occurred during data generation: {e}")
-#         return
+    except NameError:
+        print("FATAL ERROR: The function 'create_simulated_data' is not defined in the accessible scope.")
+        print("Please ensure you copied the entire 'SIMULATED DATA FOR TESTING' section from the previous response.")
+        return
+    except Exception as e:
+        print(f"An unexpected error occurred during data generation: {e}")
+        return
 
-#     if df_sim is None or df_real is None:
-#         print("Analysis stopped because simulated data generation failed.")
-#         return
+    if df_sim is None or df_real is None:
+        print("Analysis stopped because simulated data generation failed.")
+        return
 
-#     # --- 2. SEGMENTATION AND LAP TIME ANALYSIS ---
-#     print("\n--- 2. LAP SEGMENTATION & TIME ANALYSIS ---")
+    # --- 2. SEGMENTATION AND LAP TIME ANALYSIS ---
+    print("\n--- 2. LAP SEGMENTATION & TIME ANALYSIS ---")
     
-#     # SIM ANALYSIS
-#     lap_df_sim, hits_sim = segment_laps_and_track_hits(df_sim)
-#     total_time_sim, segments_sim = calculate_lap_times(hits_sim)
+    # SIM ANALYSIS
+    lap_df_sim, hits_sim = segment_laps_and_track_hits(df_sim)
+    total_time_sim, segments_sim = calculate_lap_times(hits_sim)
     
-#     # REAL ANALYSIS
-#     lap_df_real, hits_real = segment_laps_and_track_hits(df_real)
-#     total_time_real, segments_real = calculate_lap_times(hits_real)
+    # REAL ANALYSIS
+    lap_df_real, hits_real = segment_laps_and_track_hits(df_real)
+    total_time_real, segments_real = calculate_lap_times(hits_real)
 
-#     if total_time_sim == 0 or total_time_real == 0:
-#         print("One or both logs failed to complete the first lap. Cannot calculate lap times.")
-#         return
+    if total_time_sim == 0 or total_time_real == 0:
+        print("One or both logs failed to complete the first lap. Cannot calculate lap times.")
+        return
     
-#     # Numerical Metric 2: Lap Time Comparison
-#     lap_time_gap = (total_time_real - total_time_sim) / total_time_sim * 100
+    # Numerical Metric 2: Lap Time Comparison
+    lap_time_gap = (total_time_real - total_time_sim) / total_time_sim * 100
 
-#     print(f"\n[TIME METRICS (Units: seconds)]")
-#     print(f"Sim Total Lap Time: {total_time_sim:.3f}s (WP0->...->WP0)")
-#     print(f"Real Total Lap Time: {total_time_real:.3f}s (WP0->...->WP0)")
-#     print(f"-> Numerical Metric 2 (Lap Time Gap): {lap_time_gap:.2f}% (Real relative to Sim)")
+    print(f"\n[TIME METRICS (Units: seconds)]")
+    print(f"Sim Total Lap Time: {total_time_sim:.3f}s (WP0->...->WP0)")
+    print(f"Real Total Lap Time: {total_time_real:.3f}s (WP0->...->WP0)")
+    print(f"-> Numerical Metric 2 (Lap Time Gap): {lap_time_gap:.2f}% (Real relative to Sim)")
     
-#     # --- 3. POLYGON COMPARISON ANALYSIS ---
-#     print("\n--- 3. POLYGON COMPARISON ANALYSIS (Trajectory Shape) ---")
+    # --- 3. POLYGON COMPARISON ANALYSIS ---
+    print("\n--- 3. POLYGON COMPARISON ANALYSIS (Trajectory Shape) ---")
 
-#     # Step 1: Get Sim reference Polygon
-#     _, _, polygon_sim = calculate_buffered_area_gap(lap_df_sim)
+    # Step 1: Get Sim reference Polygon
+    _, _, polygon_sim = calculate_buffered_area_gap(lap_df_sim)
     
-#     # Step 2: Compare Real trajectory against Sim Polygon
-#     ratio_diff, area_diff, polygon_real = calculate_buffered_area_gap(lap_df_real, comparison_polygon=polygon_sim)
+    # Step 2: Compare Real trajectory against Sim Polygon
+    ratio_diff, area_diff, polygon_real = calculate_buffered_area_gap(lap_df_real, comparison_polygon=polygon_sim)
 
-#     # Numerical Metric 1: Polygon Comparison Ratio
-#     print(f"Buffer Radius Used (R): {BUFFER_RADIUS:.3f}")
-#     print(f"Non-Common Area (Area_diff): {area_diff:.4f} sq. units")
-#     print(f"-> Numerical Metric 1 (Polygon Comparison Ratio): {ratio_diff*100:.2f}% (Non-overlapping path footprint)")
+    # Numerical Metric 1: Polygon Comparison Ratio
+    print(f"Buffer Radius Used (R): {BUFFER_RADIUS:.3f}")
+    print(f"Non-Common Area (Area_diff): {area_diff:.4f} sq. units")
+    print(f"-> Numerical Metric 1 (Polygon Comparison Ratio): {ratio_diff*100:.2f}% (Non-overlapping path footprint)")
 
-#     # --- 4. VISUALIZATION ---
-#     if do_visualize:
-#         print("\n--- 4. VISUALIZATION ---")
-#         visualize_comparison(lap_df_sim, lap_df_real, polygon_sim, polygon_real)
+    # --- 4. VISUALIZATION ---
+    if do_visualize:
+        print("\n--- 4. VISUALIZATION ---")
+        visualize_comparison(lap_df_sim, lap_df_real, polygon_sim, polygon_real)
 
 
 # Helper class to mock LogDecoder for testing

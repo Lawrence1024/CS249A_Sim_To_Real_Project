@@ -26,6 +26,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 
 from sampler import MultiArmedBanditSampler
 from verifai.features import Box
+from post_processing import compute_gap_metric, GapComputationError, get_latest_log_pair
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -287,7 +288,10 @@ def manual_robotics_evaluation(
         
         # Wait for user to provide metric
         try:
-            metric_input = input(f"\nEnter metric value (0-1) or 'q' to quit, 's' to skip: ").strip()
+            metric_input = input(
+                "\nEnter metric value (0-1), press Enter to compute from logs, "
+                "'q' to quit, 's' to skip: "
+            ).strip()
             
             if metric_input.lower() == 'q':
                 log.info("User quit. Saving checkpoint...")
@@ -298,13 +302,30 @@ def manual_robotics_evaluation(
             if metric_input.lower() == 's':
                 log.info("Skipping this sample...")
                 continue
-            
-            metric = float(metric_input)
-            
-            # Validate metric range
-            if metric < 0 or metric > 1:
-                log.warning(f"Metric {metric} outside [0,1] range, clamping...")
-                metric = max(0.0, min(1.0, metric))
+
+            if metric_input == '':
+                # Auto-compute metric from the most recent log files in the robotics log folder
+                try:
+                    sim_log_path, real_log_path = get_latest_log_pair()
+                    print("\nAuto-selected log files:")
+                    print(f"  sim : {sim_log_path}")
+                    print(f"  real: {real_log_path}")
+                    gap_metrics = compute_gap_metric(str(sim_log_path), str(real_log_path))
+                    metric = gap_metrics["combined_error"]
+                    print("\nComputed sim-to-real gap metric:")
+                    print(f"  combined_error: {metric:.4f}")
+                    print(f"  lap_time_gap_pct: {gap_metrics['lap_time_gap_pct']:.2f}%")
+                    print(f"  area_ratio_diff: {gap_metrics['ratio_diff']:.4f}")
+                except GapComputationError as e:
+                    log.error(f"Gap computation failed: {e}")
+                    continue
+            else:
+                metric = float(metric_input)
+                
+                # Validate metric range
+                if metric < 0 or metric > 1:
+                    log.warning(f"Metric {metric} outside [0,1] range, clamping...")
+                    metric = max(0.0, min(1.0, metric))
             
             # Update sampler
             sampler.update(sample, metric, log=log)
