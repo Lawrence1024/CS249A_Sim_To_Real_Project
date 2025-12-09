@@ -13,7 +13,7 @@ The model supports:
 Example usage:
     model scenic.domains.robotics.model
     
-    robot = new PololuRobot at (0, 0, 0), with behavior LineFollowingBehavior()
+    robot = new PololuRobot at (0, 0, 0), with behavior SquareTrackBehavior()
 """
 
 import math

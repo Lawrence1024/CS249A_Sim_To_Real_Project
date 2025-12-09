@@ -132,7 +132,6 @@ You can use different behaviors from `scenic.domains.robotics.behaviors`:
 - `SquareTrackBehavior()`: Follow a square track with waypoints
 - `PatrolBehavior(waypoints)`: Patrol between custom waypoints
 - `RandomWalkBehavior()`: Random forward and turning motions
-- `LineFollowingBehavior()`: Follow a line using IR sensors
 - `ObstacleAvoidanceBehavior()`: Avoid obstacles using sensors
 
 The power of Scenic is that **you just describe what you want** - define waypoints, behaviors, and the robot will follow them!
