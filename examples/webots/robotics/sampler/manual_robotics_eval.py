@@ -359,9 +359,9 @@ if __name__ == "__main__":
     
     # Define parameter ranges directly (no need for VerifAI scenic file)
     param_ranges = {
-        'forwardSpeed': (50, 100),      # Speed units
-        'turnSpeed': (40, 80),          # Turn speed units
-        'waypointThreshold': (0.05, 0.2)  # Distance threshold in meters
+        'forwardSpeed': (30, 70),      # Percent Throttle
+        'turnSpeed': (20, 40),          # Turn speed units
+        'waypointThreshold': (0.08, 0.12)  # Distance threshold in meters
     }
     
     manual_robotics_evaluation(
@@ -378,6 +378,6 @@ if __name__ == "__main__":
         resume_from_checkpoint=True,
         start_sample_num=0,
         param_ranges=param_ranges,
-        reset_sampler=False
+        reset_sampler=True
     )
 

@@ -104,12 +104,12 @@ class HardwareInterface:
     interface for controlling physical Pololu robots from Scenic scenarios.
     """
     
-    def __init__(self, mocap_target_id=15, max_angular_velocity=10.0):
+    def __init__(self, mocap_target_id=15, max_angular_velocity=50.0):
         """Initialize hardware interface.
         
         Args:
             mocap_target_id: Motion capture target ID for this robot
-            max_angular_velocity: Maximum angular velocity in rad/s (default 10.0 to match Webots)
+            max_angular_velocity: Maximum angular velocity in rad/s (default 50.0 to match Webots)
                                   This should match your hardware's max motor velocity
         """
         self.mocap_estimator = MocapEstimator(target_id=mocap_target_id)  # Real mocap system

@@ -28,8 +28,8 @@ class WebotsRobot(WebotsObject, DifferentialDriveRobot):
                 emitter = self.webotsSupervisor.getDevice("emitter")
                 if emitter:
                     import json
-                    # Scale motor speeds to fit Webots motor limits (maxVelocity = 10)
-                    max_webots_speed = 10
+                    # Scale motor speeds to fit Webots motor limits (maxVelocity = 50)
+                    max_webots_speed = 50
                     scaled_left = (self.leftMotorSpeed / 100.0) * max_webots_speed
                     scaled_right = (self.rightMotorSpeed / 100.0) * max_webots_speed
                     

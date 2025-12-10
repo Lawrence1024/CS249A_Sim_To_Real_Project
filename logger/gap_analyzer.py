@@ -1,57 +1,83 @@
 import pandas as pd
 import numpy as np
 from shapely.geometry import LineString, Polygon
-from typing import List, Tuple, Dict
+from shapely.ops import polygonize
+from typing import List, Tuple, Dict, Any
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
 import sys
 import os
-import boundary_check
+import logging
+from logger import boundary_check
 
-
-# --- CONFIGURATION ---
-# ⚠️ USER CONFIGURATION REQUIRED: DEFINE YOUR WAYPOINTS AND CAR SIZE
-# Note: Waypoints are now only used for context/visualization, not for segmentation.
+# Configuration
 WAYPOINTS = [
-    (0.0, 0.0), # WP0 (Start/End)
-    (1.0, 0.0), # WP1
-    (1.0, 1.0), # WP2
-    (0.0, 1.0)  # WP3
+    (-0.32,-0.46), (-0.32,0.36), (-1.02,0.36), (-1.02,-0.46)
 ]
-# Trajectory Buffer Radius (R = Car Width / 2). Used for Polygon Comparison.
 BUFFER_RADIUS = 0.05 
 
-# --- CORE FUNCTIONS ---
+log = logging.getLogger(__name__)
 
-def segment_laps_and_track_hits(df_log: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict]]:
+def segment_laps_and_track_hits(df_log: pd.DataFrame, use_initial_zero_span: bool = False) -> Tuple[pd.DataFrame, List[Dict]]:
     """
-    Optimized: Segments the data using the 'target_id' column based on the 0 -> 1 switch.
-    The lap is defined from the moment target_id first changes 0 -> 1, up until 
-    the moment target_id changes 0 -> 1 for the second time.
+    Segment a lap from the log.
+
+    Modes:
+      - use_initial_zero_span=False (default): lap is from first 0->1 switch up to
+        the second 0->1 switch (existing behavior).
+      - use_initial_zero_span=True: lap is from the very first row to the last row
+        whose target_id is 0 before it updates to 1 for the first time.
     
-    Returns: (DataFrame of the first lap, List of hit records for the first lap)
+    Returns: (DataFrame of the lap, List of hit records for the lap)
     """
-    
-    # Target ID switch: Hitting WP0 causes target_id to change from the previous target (WP0, ID=0) to WP1 (ID=1).
-    # Find all indices where target_id becomes 1 AND the previous target_id was 0 (or another value).
-    
-    hit_wp0_indices = df_log[
-        (df_log['target_id'] == 1) & (df_log['target_id'].shift(1) == 0)
-    ].index.tolist()
 
-    if len(hit_wp0_indices) < 2:
-        print("Warning: Failed to find two 0 -> 1 target_id switch events. Cannot segment a full lap.")
-        return pd.DataFrame(), []
+    if use_initial_zero_span:
+        # We want from the very first point to the last 0 before target_id switches back to 1.
+        # Find the first index where target_id == 1 AND previous target_id == 0 (the reappearance of 1).
+        zero_to_one_idx_list = df_log[(df_log["target_id"] == 1) & (df_log["target_id"].shift(1) == 0)].index.tolist()
 
-    # Start index of the lap: First time target_id switches to 1
-    start_index = hit_wp0_indices[0]
-    
-    # End index of the lap: Second time target_id switches to 1 (This row is the start of the next lap)
-    end_index = hit_wp0_indices[1] 
+        if len(zero_to_one_idx_list) == 0:
+            # print("Warning: No 0->1 transition found. Cannot segment initial zero span.")
+            return pd.DataFrame(), []
 
-    # Extract the first lap DataFrame (inclusive of the start, exclusive of the end point)
-    # The lap ends just before the row where the second 0->1 transition occurs.
-    first_lap_df = df_log.loc[start_index:end_index].iloc[:-1].copy()
+        switch_idx = zero_to_one_idx_list[0]  # first time 0->1 happens
+        end_index = switch_idx - 1  # last 0 before 1 reappears
+
+        if end_index < df_log.index.min():
+            # print("Warning: Invalid 0->1 transition indices. Cannot segment initial zero span.")
+            return pd.DataFrame(), []
+
+        start_index = df_log.index.min()
+        first_lap_df = df_log.loc[start_index:end_index].copy()
+
+        lap_hits = [{
+            'timestamp': first_lap_df.iloc[0]['timestamp'],
+            'waypoint_index': 0,
+            'data_index': first_lap_df.index[0]
+        }, {
+            'timestamp': first_lap_df.iloc[-1]['timestamp'],
+            'waypoint_index': 0,
+            'data_index': first_lap_df.index[-1]
+        }]
+    else:
+        # Target ID switch: Hitting WP0 causes target_id to change from the previous target (WP0, ID=0) to WP1 (ID=1).
+        # Find all indices where target_id becomes 1 AND the previous target_id was 0 (or another value).
+        
+        hit_wp0_indices = df_log[
+            (df_log['target_id'] == 1) & (df_log['target_id'].shift(1) == 0)
+        ].index.tolist()
+
+        if len(hit_wp0_indices) < 2:
+            # print("Warning: Failed to find one 0 -> 1 target_id switch events. Cannot segment a full lap.")
+            return pd.DataFrame(), []
+
+        
+        # End index of the lap: First time target_id switches to 1 (This row is the start of the next lap)
+        start_index,end_index = hit_wp0_indices[0], hit_wp0_indices[1]
+
+        # Extract the first lap DataFrame (inclusive of the start, exclusive of the end point)
+        # The lap ends just before the row where the second 0->1 transition occurs.
+        first_lap_df = df_log.loc[start_index:end_index].iloc[:-1].copy()
     
     # --- Simplified Hit Records (for Lap Time) ---
     lap_hits = []
@@ -60,35 +86,31 @@ def segment_laps_and_track_hits(df_log: pd.DataFrame) -> Tuple[pd.DataFrame, Lis
     lap_timestamps = first_lap_df['timestamp'].values
     lap_indices = first_lap_df.index.values
 
-    # Record the *start* of the lap (Hit WP0 -> Target 1 switch)
+    # Record the start of the lap
     lap_hits.append({
         'timestamp': lap_timestamps[0],
         'waypoint_index': 0, # Corresponds to hitting WP0
         'data_index': lap_indices[0]
     })
 
-    # Find subsequent target ID changes (1 -> 2, 2 -> 3, 3 -> 0)
-    for i in range(1, len(lap_target_ids)):
-        current_id = lap_target_ids[i]
-        prev_id = lap_target_ids[i-1]
-        
-        # Check for a switch to a new target
-        if current_id != prev_id:
-            # The switch happens at index i.
-            # The waypoint hit is the ID *before* the switch (prev_id).
-            lap_hits.append({
-                'timestamp': lap_timestamps[i],
-                'waypoint_index': prev_id, 
-                'data_index': lap_indices[i]
-            })
+    # Find subsequent target ID changes (only in default mode where switches exist)
+    if not use_initial_zero_span:
+        for i in range(1, len(lap_target_ids)):
+            current_id = lap_target_ids[i]
+            prev_id = lap_target_ids[i-1]
+            
+            if current_id != prev_id:
+                lap_hits.append({
+                    'timestamp': lap_timestamps[i],
+                    'waypoint_index': prev_id, 
+                    'data_index': lap_indices[i]
+                })
 
-    # Record the end of the lap (Hit WP3 -> Target 0 switch)
-    # The end time is the timestamp at the 'end_index' in the original df (where the 0->1 switch happens)
-    end_lap_timestamp = df_log.loc[end_index, 'timestamp']
+    # Record the end of the lap
     lap_hits.append({
-        'timestamp': end_lap_timestamp,
-        'waypoint_index': len(WAYPOINTS) - 1, # Corresponds to hitting the last WP (WP3)
-        'data_index': end_index
+        'timestamp': lap_timestamps[-1],
+        'waypoint_index': lap_target_ids[-1] if len(lap_target_ids) else 0,
+        'data_index': lap_indices[-1]
     })
 
     return first_lap_df, lap_hits
@@ -134,37 +156,51 @@ def calculate_lap_times(first_lap_hits: List[Dict]) -> Tuple[float, Dict[str, fl
     return total_lap_time, segment_times
 
 
-def calculate_buffered_area_gap(lap_df: pd.DataFrame, comparison_polygon: Polygon = None) -> Tuple[float, float, Polygon]:
+def calculate_buffered_area_gap(lap_df: pd.DataFrame, comparison_polygon: Polygon = None, waypoints=WAYPOINTS) -> Tuple[float, float, Polygon]:
     """
-    Calculates the buffered area (Polygon) of the trajectory and compares it 
+    Calculates the area enclosed by the trajectory (as a Polygon) and compares it
     with a reference Polygon (e.g., the Sim trajectory).
     """
     trajectory_points = lap_df[['x', 'y']].values
     
-    if len(trajectory_points) < 2:
+    if len(trajectory_points) < 3:
         return 0.0, 0.0, None
 
-    # 1. Generate the buffered Polygon for the current trajectory
-    trajectory_line = LineString(trajectory_points)
-    current_polygon = trajectory_line.buffer(BUFFER_RADIUS)
+    # Build polygon from trajectory path (enclosed area). If invalid/degenerate, use convex hull.
+    current_polygon = Polygon(trajectory_points)
+    if (not current_polygon.is_valid) or current_polygon.area == 0:
+        # Try to fix self-intersections while preserving concavities
+        fixed = current_polygon.buffer(0)
+        if fixed.is_valid and fixed.area > 0:
+            current_polygon = fixed
+        else:
+            # Fallback: polygonize the linestring to capture concave parts if possible
+            ls = LineString(trajectory_points)
+            polys = list(polygonize(ls))
+            if polys:
+                current_polygon = max(polys, key=lambda p: p.area)
+            else:
+                current_polygon = current_polygon.convex_hull
     
     if comparison_polygon is None:
         return 0.0, 0.0, current_polygon
 
-    # 2. Compare with the reference Polygon
+    # Compare with the reference Polygon
     union = current_polygon.union(comparison_polygon)
     intersection = current_polygon.intersection(comparison_polygon)
 
     area_union = union.area
     area_intersection = intersection.area
     
-    # 3. Calculate Non-Common Area (Symmetric Difference)
+    # Non-Common Area (Symmetric Difference)
     area_diff = area_union - area_intersection
-
-    # 4. Calculate Difference Ratio (Numerical Metric 1)
-    ratio_diff = area_diff / area_union if area_union > 0 else 0.0
-
-    return ratio_diff, area_diff, current_polygon
+    waypoint_polygon_area = Polygon(waypoints).area if waypoints else 0.0
+    if waypoint_polygon_area > 0:
+        sqrt_ratio_diff = max(0.0, min(1.0, np.sqrt(area_diff / waypoint_polygon_area)))
+    else:
+        sqrt_ratio_diff = max(0.0, min(1.0, np.sqrt(area_diff / area_union)))
+    # Difference Ratio (Numerical Metric 1)
+    return sqrt_ratio_diff, area_diff, current_polygon
 
 
 def boundary_violation_exists(lap_df: pd.DataFrame, waypoints=WAYPOINTS, limit_dist: float = 0.3) -> bool:
@@ -180,7 +216,7 @@ def boundary_violation_exists(lap_df: pd.DataFrame, waypoints=WAYPOINTS, limit_d
 def compute_gap_objectives(
     lap_df_sim: pd.DataFrame,
     lap_df_real: pd.DataFrame,
-    ratio_diff: float,
+    sqrt_ratio_diff: float,
     area_diff: float,
     total_time_sim: float,
     total_time_real: float,
@@ -200,11 +236,7 @@ def compute_gap_objectives(
     boundary_gap = 1.0 if (violation_sim != violation_real) else 0.0
 
     # Area objective normalized by waypoint polygon area
-    waypoint_polygon_area = Polygon(waypoints).area if waypoints else 0.0
-    if waypoint_polygon_area > 0:
-        normalized_area_gap = max(0.0, min(1.0, area_diff / waypoint_polygon_area))
-    else:
-        normalized_area_gap = max(0.0, min(1.0, ratio_diff))
+    normalized_area_gap = sqrt_ratio_diff
 
     # Time objective normalized
     raw_time_gap_ratio = (total_time_real - total_time_sim) / total_time_sim if total_time_sim else 0.0
@@ -220,6 +252,122 @@ def compute_gap_objectives(
         "normalized_time_gap": normalized_time_gap,
         "time_gap_ratio": raw_time_gap_ratio,
         "lap_time_gap_pct": lap_time_gap_pct,
+    }
+
+def get_num_waypoints_hit(df: pd.DataFrame, num_waypoints: int = 4) -> int:
+    """Calculate the number of waypoints hit based on target_id transitions."""
+    if df.empty:
+        return 0
+    
+    # Check if target 0 is sought after at least twice
+    changes = df['target_id'].ne(df['target_id'].shift()).cumsum()
+    unique_sequence = df.groupby(changes)['target_id'].first()
+    zero_blocks = (unique_sequence == 0).sum()
+    
+    if zero_blocks >= 2:
+        return num_waypoints
+    else:
+        # Return the last target_id if a full lap wasn't completed
+        return int(df.iloc[-1]['target_id'])
+
+def compute_sim_real_gap(df_sim: pd.DataFrame, df_real: pd.DataFrame, waypoints=WAYPOINTS) -> Dict[str, Any]:
+    """
+    Compute comprehensive sim-to-real gap metrics from dataframes.
+    Handles both partial and full lap scenarios.
+    """
+    # 1. Calculate Waypoints Hit (Partial Lap Logic)
+    num_hits_sim = get_num_waypoints_hit(df_sim, len(waypoints))
+    num_hits_real = get_num_waypoints_hit(df_real, len(waypoints))
+    waypoints_diff = abs(num_hits_sim - num_hits_real)
+
+    # 2. Check for Partial Lap (if hits < total waypoints)
+    if num_hits_sim < len(waypoints) or num_hits_real < len(waypoints):
+        # Compute simplified metric for partial laps
+        
+        # Use whatever data we have for boundary check
+        lap_df_sim, _ = segment_laps_and_track_hits(df_sim)
+        if lap_df_sim.empty: lap_df_sim = df_sim
+        
+        lap_df_real, _ = segment_laps_and_track_hits(df_real)
+        if lap_df_real.empty: lap_df_real = df_real
+
+        violation_sim = boundary_violation_exists(lap_df_sim, waypoints=waypoints)
+        violation_real = boundary_violation_exists(lap_df_real, waypoints=waypoints)
+        boundary_gap = 1.0 if (violation_sim != violation_real) else 0.0
+
+        # Weighted sum: 0.6 * diff + 0.4 * boundary
+        combined_error = min(1.0, 0.6 * waypoints_diff + 0.4 * boundary_gap)
+
+        return {
+            "combined_error": combined_error,
+            "boundary_gap": boundary_gap,
+            "waypoints_diff": waypoints_diff,
+            "waypoints_hit_sim": num_hits_sim,
+            "waypoints_hit_real": num_hits_real,
+            "boundary_violation_sim": violation_sim,
+            "boundary_violation_real": violation_real,
+            "lap_time_sim": 0.0,
+            "lap_time_real": 0.0,
+            "lap_time_gap_pct": 0.0,
+            "area_diff": 0.0,
+            "ratio_diff": 0.0,
+            "normalized_area_gap": 0.0,
+            "normalized_time_gap": 0.0,
+            "time_gap_ratio": 0.0,
+        }
+
+    # 3. Full Lap Logic
+    lap_df_sim, hits_sim = segment_laps_and_track_hits(df_sim)
+    lap_df_real, hits_real = segment_laps_and_track_hits(df_real)
+
+    if lap_df_sim.empty or lap_df_real.empty:
+        # Should be caught by partial logic, but safety fallback
+        return {"combined_error": 1.0, "error": "Unable to segment lap despite waypoint counts"}
+
+    total_time_sim, _ = calculate_lap_times(hits_sim)
+    total_time_real, _ = calculate_lap_times(hits_real)
+
+    if total_time_sim == 0 or total_time_real == 0:
+        return {"combined_error": 1.0, "error": "Zero lap time"}
+
+    _, _, polygon_sim = calculate_buffered_area_gap(lap_df_sim)
+    sqrt_ratio_diff, area_diff, polygon_real = calculate_buffered_area_gap(
+        lap_df_real, comparison_polygon=polygon_sim
+    )
+
+    objectives = compute_gap_objectives(
+        lap_df_sim,
+        lap_df_real,
+        sqrt_ratio_diff,
+        area_diff,
+        total_time_sim,
+        total_time_real,
+        waypoints=waypoints,
+    )
+
+    combined_error = min(
+        1.0,
+        0.4 * objectives["boundary_gap"]
+        + 0.35 * objectives["normalized_area_gap"]
+        + 0.25 * objectives["normalized_time_gap"],
+    )
+
+    return {
+        "combined_error": combined_error,
+        "boundary_gap": objectives["boundary_gap"],
+        "waypoints_diff": waypoints_diff,
+        "waypoints_hit_sim": num_hits_sim,
+        "waypoints_hit_real": num_hits_real,
+        "boundary_violation_sim": objectives["boundary_violation_sim"],
+        "boundary_violation_real": objectives["boundary_violation_real"],
+        "lap_time_sim": total_time_sim,
+        "lap_time_real": total_time_real,
+        "lap_time_gap_pct": objectives["lap_time_gap_pct"],
+        "area_diff": area_diff,
+        "ratio_diff": sqrt_ratio_diff,
+        "normalized_area_gap": objectives["normalized_area_gap"],
+        "normalized_time_gap": objectives["normalized_time_gap"],
+        "time_gap_ratio": objectives["time_gap_ratio"],
     }
 
 def visualize_comparison(lap_df_sim: pd.DataFrame, lap_df_real: pd.DataFrame, polygon_sim: Polygon, polygon_real: Polygon):
@@ -356,149 +504,37 @@ def run_sim_to_real_analysis(sim_file: str, real_file: str, do_visualize: bool =
         print("Analysis stopped due to file loading errors.")
         return
 
-    # --- 2. SEGMENTATION AND LAP TIME ANALYSIS ---
-    print("\n--- 2. LAP SEGMENTATION & TIME ANALYSIS ---")
+    # --- 2. COMPUTE METRICS ---
+    print("\n--- 2. COMPUTING METRICS ---")
+    metrics = compute_sim_real_gap(df_sim, df_real)
     
-    # SIM ANALYSIS
-    lap_df_sim, hits_sim = segment_laps_and_track_hits(df_sim)
-    total_time_sim, segments_sim = calculate_lap_times(hits_sim)
-    
-    # REAL ANALYSIS
-    lap_df_real, hits_real = segment_laps_and_track_hits(df_real)
-    total_time_real, segments_real = calculate_lap_times(hits_real)
-
-    if total_time_sim == 0 or total_time_real == 0:
-        print("One or both logs failed to complete the first lap. Cannot calculate lap times.")
+    if "error" in metrics:
+        print(f"Error computing metrics: {metrics['error']}")
         return
-    
-    # Numerical Metric 2: Lap Time Comparison
-    lap_time_gap = (total_time_real - total_time_sim) / total_time_sim * 100
 
-    print(f"\n[TIME METRICS (Units: seconds)]")
-    print(f"Sim Total Lap Time: {total_time_sim:.3f}s (WP0->...->WP0)")
-    print(f"Real Total Lap Time: {total_time_real:.3f}s (WP0->...->WP0)")
-    print(f"-> Numerical Metric 2 (Lap Time Gap): {lap_time_gap:.2f}% (Real relative to Sim)")
-    
-    # --- 3. POLYGON COMPARISON ANALYSIS ---
-    print("\n--- 3. POLYGON COMPARISON ANALYSIS (Trajectory Shape) ---")
+    print(f"\n[METRICS]")
+    print(f"Combined Error: {metrics['combined_error']:.4f}")
+    if metrics["lap_time_sim"] > 0:
+        print(f"Lap Time Gap: {metrics['lap_time_gap_pct']:.2f}%")
+        print(f"Area Ratio Diff: {metrics['ratio_diff']:.4f}")
+    else:
+        print(f"Waypoints Hit: Sim={metrics['waypoints_hit_sim']}, Real={metrics['waypoints_hit_real']}")
+        print(f"Partial Lap Detected - Metrics based on waypoint diff and boundary violation.")
 
-    # Step 1: Get Sim reference Polygon
-    _, _, polygon_sim = calculate_buffered_area_gap(lap_df_sim)
-    
-    # Step 2: Compare Real trajectory against Sim Polygon
-    ratio_diff, area_diff, polygon_real = calculate_buffered_area_gap(lap_df_real, comparison_polygon=polygon_sim)
-
-    # Numerical Metric 1: Polygon Comparison Ratio
-    print(f"Buffer Radius Used (R): {BUFFER_RADIUS:.3f}")
-    print(f"Non-Common Area (Area_diff): {area_diff:.4f} sq. units")
-    print(f"-> Numerical Metric 1 (Polygon Comparison Ratio): {ratio_diff*100:.2f}% (Non-overlapping path footprint)")
-
-    # --- 4. VISUALIZATION ---
-    if do_visualize:
-        print("\n--- 4. VISUALIZATION ---")
+    # --- 3. VISUALIZATION ---
+    if do_visualize and metrics["lap_time_sim"] > 0:
+        print("\n--- 3. VISUALIZATION ---")
+        # Re-compute polygons for visualization (since we abstracted them away)
+        lap_df_sim, _ = segment_laps_and_track_hits(df_sim)
+        lap_df_real, _ = segment_laps_and_track_hits(df_real)
+        _, _, polygon_sim = calculate_buffered_area_gap(lap_df_sim)
+        _, _, polygon_real = calculate_buffered_area_gap(lap_df_real, comparison_polygon=polygon_sim)
         visualize_comparison(lap_df_sim, lap_df_real, polygon_sim, polygon_real)
-
-"""up real, down sim"""
-
-def run_sim_to_real_analysis(sim_file: str, real_file: str, do_visualize: bool = False):
-    """
-    Main function to run the sim-to-real gap analysis.
-    
-    NOTE: This version is modified to use the hardcoded/simulated data 
-    (create_simulated_data) for testing purposes, bypassing file reading.
-    """
-    print("--- 1. LOADING DATA ---")
-
-    # -------------------------------------------------------------
-    # 🔥 FIX: BYPASSING FILE READING AND USING SIMULATED DATA DIRECTLY
-    # -------------------------------------------------------------
-    try:
-        # Use the hardcoded functions defined below to generate test data
-        df_sim = create_simulated_data(is_real=False) 
-        df_real = create_simulated_data(is_real=True)  
-        print("Successfully generated simulated data for Sim and Real.")
-
-        # --- Original file reading code (now commented out) ---
-        # try:
-        #     from log_decoder import LogDecoder
-        # except ImportError:
-        #     print("Error: log_decoder.py not found. Ensure it is in the same directory.")
-        #     return
-        # df_sim = LogDecoder.decode_df(sim_file)
-        # df_real = LogDecoder.decode_df(real_file)
-        # -----------------------------------------------------
-
-    except NameError:
-        print("FATAL ERROR: The function 'create_simulated_data' is not defined in the accessible scope.")
-        print("Please ensure you copied the entire 'SIMULATED DATA FOR TESTING' section from the previous response.")
-        return
-    except Exception as e:
-        print(f"An unexpected error occurred during data generation: {e}")
-        return
-
-    if df_sim is None or df_real is None:
-        print("Analysis stopped because simulated data generation failed.")
-        return
-
-    # --- 2. SEGMENTATION AND LAP TIME ANALYSIS ---
-    print("\n--- 2. LAP SEGMENTATION & TIME ANALYSIS ---")
-    
-    # SIM ANALYSIS
-    lap_df_sim, hits_sim = segment_laps_and_track_hits(df_sim)
-    total_time_sim, segments_sim = calculate_lap_times(hits_sim)
-    
-    # REAL ANALYSIS
-    lap_df_real, hits_real = segment_laps_and_track_hits(df_real)
-    total_time_real, segments_real = calculate_lap_times(hits_real)
-
-    if total_time_sim == 0 or total_time_real == 0:
-        print("One or both logs failed to complete the first lap. Cannot calculate lap times.")
-        return
-    
-    # Numerical Metric 2: Lap Time Comparison
-    lap_time_gap = (total_time_real - total_time_sim) / total_time_sim * 100
-
-    print(f"\n[TIME METRICS (Units: seconds)]")
-    print(f"Sim Total Lap Time: {total_time_sim:.3f}s (WP0->...->WP0)")
-    print(f"Real Total Lap Time: {total_time_real:.3f}s (WP0->...->WP0)")
-    print(f"-> Numerical Metric 2 (Lap Time Gap): {lap_time_gap:.2f}% (Real relative to Sim)")
-    
-    # --- 3. POLYGON COMPARISON ANALYSIS ---
-    print("\n--- 3. POLYGON COMPARISON ANALYSIS (Trajectory Shape) ---")
-
-    # Step 1: Get Sim reference Polygon
-    _, _, polygon_sim = calculate_buffered_area_gap(lap_df_sim)
-    
-    # Step 2: Compare Real trajectory against Sim Polygon
-    ratio_diff, area_diff, polygon_real = calculate_buffered_area_gap(lap_df_real, comparison_polygon=polygon_sim)
-
-    # Numerical Metric 1: Polygon Comparison Ratio
-    print(f"Buffer Radius Used (R): {BUFFER_RADIUS:.3f}")
-    print(f"Non-Common Area (Area_diff): {area_diff:.4f} sq. units")
-    print(f"-> Numerical Metric 1 (Polygon Comparison Ratio): {ratio_diff*100:.2f}% (Non-overlapping path footprint)")
-
-    # --- 4. VISUALIZATION ---
-    if do_visualize:
-        print("\n--- 4. VISUALIZATION ---")
-        visualize_comparison(lap_df_sim, lap_df_real, polygon_sim, polygon_real)
-
-
-# Helper class to mock LogDecoder for testing
-class MockLogDecoder:
-    @staticmethod
-    def decode_df(filename: str):
-        if 'sim' in filename:
-            return create_simulated_data(is_real=False)
-        elif 'real' in filename:
-            return create_simulated_data(is_real=True)
-        return None
-
-
 
 if __name__ == "__main__":
     # ⚠️ USE MOCK FILES FOR DEMONSTRATION 
-    SIM_LOG_FILE = 'sim_log.bin'  
-    REAL_LOG_FILE = 'real_log.bin' 
+    SIM_LOG_FILE = './examples/webots/robotics/log/fast_log_1765330653.bin'  
+    REAL_LOG_FILE = './examples/webots/robotics/log/fast_log_1765330805.bin' 
     
     # Run the analysis and visualize the results
     run_sim_to_real_analysis(SIM_LOG_FILE, REAL_LOG_FILE, do_visualize=True)

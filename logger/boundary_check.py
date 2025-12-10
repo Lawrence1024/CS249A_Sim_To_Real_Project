@@ -1,6 +1,6 @@
 import numpy as np
 
-def check_square_boundary_violation(robot_pos, waypoints, limit_dist=0.3):
+def check_square_boundary_violation(robot_pos, waypoints, limit_dist=0.20):
     """
     Args:
         robot_pos: (x, y) tuple of the robot

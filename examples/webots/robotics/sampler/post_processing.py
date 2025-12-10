@@ -114,7 +114,7 @@ def compute_gap_metric(
         raise GapComputationError("Lap times could not be computed; check target_id transitions.")
 
     _, _, polygon_sim = ga.calculate_buffered_area_gap(lap_df_sim)
-    ratio_diff, area_diff, polygon_real = ga.calculate_buffered_area_gap(
+    sqrt_ratio_diff, area_diff, polygon_real = ga.calculate_buffered_area_gap(
         lap_df_real, comparison_polygon=polygon_sim
     )
 
@@ -122,7 +122,7 @@ def compute_gap_metric(
     objectives = ga.compute_gap_objectives(
         lap_df_sim,
         lap_df_real,
-        ratio_diff,
+        sqrt_ratio_diff,
         area_diff,
         total_time_sim,
         total_time_real,
@@ -147,7 +147,7 @@ def compute_gap_metric(
         "boundary_gap": objectives["boundary_gap"],
         "combined_error": combined_error,
         "area_diff": area_diff,
-        "ratio_diff": ratio_diff,
+        "ratio_diff": sqrt_ratio_diff,
         "boundary_violation_sim": objectives["boundary_violation_sim"],
         "boundary_violation_real": objectives["boundary_violation_real"],
     }
@@ -156,7 +156,7 @@ def compute_gap_metric(
         "Gap metrics -> boundary_gap: %.2f | lap_time_gap_pct: %.2f%% | area_ratio: %.4f | combined_error: %.4f",
         objectives["boundary_gap"],
         objectives["lap_time_gap_pct"],
-        ratio_diff,
+        sqrt_ratio_diff,
         combined_error,
     )
 

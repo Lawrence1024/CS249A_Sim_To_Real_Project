@@ -1,6 +1,13 @@
 from controller import Supervisor, Emitter, Receiver
 import os
+import sys
 import json
+
+# Ensure project root is on sys.path so 'logger' and other modules resolve
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..", "..", "..", "..", ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 import scenic
 from scenic.simulators.webots import WebotsSimulator

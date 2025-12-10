@@ -2,6 +2,7 @@ import threading
 import queue
 import time
 import struct
+from pathlib import Path
 
 class FastLogger:
     def __init__(self, filename = None, flush_interval=0.1):
@@ -9,8 +10,10 @@ class FastLogger:
         self.flush_interval = flush_interval
         if filename is None:
             timestamp = int(time.time())
-            filename = f'.examples/webots/robotics/log/fast_log_{timestamp}.bin'
-        self.filename = filename
+            base_dir = Path(__file__).resolve().parents[1] / "examples" / "webots" / "robotics" / "log"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            filename = base_dir / f"fast_log_{timestamp}.bin"
+        self.filename = str(filename)
         self.stop_flag = False
         
         # 'ab' = Append Binary.
