@@ -24,11 +24,13 @@ from typing import Any, Dict, Optional
 # Ensure the project root (Scenic/) is importable so logger.gap_analyzer works
 ROOT = Path(__file__).resolve().parent  # .../examples/webots/robotics/sampler
 PROJECT_ROOT = ROOT.parents[3]          # .../Scenic
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 from logger.log_decoder import LogDecoder  # type: ignore
-from logger import gap_analyzer as ga      # type: ignore
+import gap_analyzer_v2 as ga_v2            # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +43,13 @@ LOG_DIR_CANDIDATES = (
     ROOT.parent / "log",   # Expected default: .../robotics/log
     ROOT.parent / "logs",  # Alternate naming
 )
+
+DEFAULT_WEIGHTS: Dict[str, float] = {
+    "waypoint": 0.34,
+    "boundary": 0.33,
+    "trajectory": 0.33,
+}
+DEFAULT_TRAJECTORY_NORM = 1.0
 
 
 def _resolve_log_dir(log_dir: Optional[str] = None) -> Path:
@@ -81,15 +90,19 @@ def compute_gap_metric(
     sim_log_file: str,
     real_log_file: str,
     do_visualize: bool = False,
+    use_relative_deltas: bool = False,
+    weights: Optional[Dict[str, float]] = None,
+    trajectory_norm: float = DEFAULT_TRAJECTORY_NORM,
+    boundary_limit_dist: float = 0.3,
 ) -> Dict[str, Any]:
     """
     Compute sim-to-real gap metrics from two binary log files.
 
     Returns a dictionary containing:
-        - lap_time_sim, lap_time_real, lap_time_gap_pct
-        - normalized_time_gap, normalized_area_gap, boundary_gap
-        - combined_error
-        - area_diff, ratio_diff
+        - waypoints_hit_sim/real and absolute difference
+        - boundary agreement (1 match, 0 mismatch)
+        - trajectory_gap (raw) and normalized value
+        - combined_error in [0, 1]
     """
     for path in (sim_log_file, real_log_file):
         if not path or not os.path.exists(path):
@@ -101,67 +114,56 @@ def compute_gap_metric(
     if df_sim is None or df_real is None:
         raise GapComputationError("Failed to decode one or both log files using LogDecoder.")
 
-    lap_df_sim, hits_sim = ga.segment_laps_and_track_hits(df_sim)
-    lap_df_real, hits_real = ga.segment_laps_and_track_hits(df_real)
-
-    if lap_df_sim.empty or lap_df_real.empty:
-        raise GapComputationError("Unable to segment a full lap from the provided logs.")
-
-    total_time_sim, _ = ga.calculate_lap_times(hits_sim)
-    total_time_real, _ = ga.calculate_lap_times(hits_real)
-
-    if total_time_sim == 0 or total_time_real == 0:
-        raise GapComputationError("Lap times could not be computed; check target_id transitions.")
-
-    _, _, polygon_sim = ga.calculate_buffered_area_gap(lap_df_sim)
-    sqrt_ratio_diff, area_diff, polygon_real = ga.calculate_buffered_area_gap(
-        lap_df_real, comparison_polygon=polygon_sim
+    cfg = ga_v2.TrajectoryGapConfig(
+        use_relative_deltas=use_relative_deltas,
+        trajectory_norm=trajectory_norm,
+        boundary_limit_dist=boundary_limit_dist,
     )
+    raw_metrics = ga_v2.compute_sim_real_gap_v2(df_sim, df_real, config=cfg)
 
-    # Compute normalized objectives in gap_analyzer
-    objectives = ga.compute_gap_objectives(
-        lap_df_sim,
-        lap_df_real,
-        sqrt_ratio_diff,
-        area_diff,
-        total_time_sim,
-        total_time_real,
-        waypoints=ga.WAYPOINTS,
-    )
+    wp_gap = min(1.0, raw_metrics["waypoints_diff"] / float(len(ga_v2.WAYPOINTS)))
+    boundary_gap = 1.0 - raw_metrics["boundary_match"]
+    norm_val = trajectory_norm if trajectory_norm > 0 else DEFAULT_TRAJECTORY_NORM
+    traj_gap = min(1.0, raw_metrics["trajectory_gap"] / norm_val) if norm_val else 0.0
 
-    # Combine with priority weighting
+    applied_weights = weights or DEFAULT_WEIGHTS
     combined_error = min(
         1.0,
-        0.4 * objectives["boundary_gap"]
-        + 0.35 * objectives["normalized_area_gap"]
-        + 0.25 * objectives["normalized_time_gap"],
+        applied_weights.get("waypoint", 0.0) * wp_gap
+        + applied_weights.get("boundary", 0.0) * boundary_gap
+        + applied_weights.get("trajectory", 0.0) * traj_gap,
     )
 
     metrics: Dict[str, Any] = {
-        "lap_time_sim": total_time_sim,
-        "lap_time_real": total_time_real,
-        "lap_time_gap_pct": objectives["lap_time_gap_pct"],
-        "time_gap_ratio": objectives["time_gap_ratio"],
-        "normalized_time_gap": objectives["normalized_time_gap"],
-        "normalized_area_gap": objectives["normalized_area_gap"],
-        "boundary_gap": objectives["boundary_gap"],
+        "waypoints_hit_sim": raw_metrics["waypoints_hit_sim"],
+        "waypoints_hit_real": raw_metrics["waypoints_hit_real"],
+        "waypoints_diff": raw_metrics["waypoints_diff"],
+        "boundary_violation_sim": raw_metrics["boundary_violation_sim"],
+        "boundary_violation_real": raw_metrics["boundary_violation_real"],
+        "boundary_match": raw_metrics["boundary_match"],
+        "trajectory_gap_raw": raw_metrics["trajectory_gap"],
+        "trajectory_mode": raw_metrics["trajectory_mode"],
+        "trajectory_segments": raw_metrics["trajectory_segments"],
+        "trajectory_aligned_points": raw_metrics["trajectory_aligned_points"],
+        "trajectory_duration": raw_metrics["trajectory_duration"],
+        "normalized_waypoint_gap": wp_gap,
+        "normalized_boundary_gap": boundary_gap,
+        "normalized_trajectory_gap": traj_gap,
         "combined_error": combined_error,
-        "area_diff": area_diff,
-        "ratio_diff": sqrt_ratio_diff,
-        "boundary_violation_sim": objectives["boundary_violation_sim"],
-        "boundary_violation_real": objectives["boundary_violation_real"],
+        "weights": applied_weights,
     }
 
     log.info(
-        "Gap metrics -> boundary_gap: %.2f | lap_time_gap_pct: %.2f%% | area_ratio: %.4f | combined_error: %.4f",
-        objectives["boundary_gap"],
-        objectives["lap_time_gap_pct"],
-        sqrt_ratio_diff,
+        "Gap metrics v2 -> wp_diff: %d | boundary_match: %d | traj_gap: %.4f (%s) | combined_error: %.4f",
+        raw_metrics["waypoints_diff"],
+        raw_metrics["boundary_match"],
+        raw_metrics["trajectory_gap"],
+        raw_metrics["trajectory_mode"],
         combined_error,
     )
 
     if do_visualize:
-        ga.visualize_comparison(lap_df_sim, lap_df_real, polygon_sim, polygon_real)
+        ga_v2.visualize_alignment(raw_metrics["df_sim_used"], raw_metrics["df_real_used"])
 
     return metrics
 
