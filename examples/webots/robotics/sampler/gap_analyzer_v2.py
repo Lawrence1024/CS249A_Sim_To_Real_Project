@@ -69,9 +69,11 @@ def num_waypoints_hit_v2(df: pd.DataFrame, total_wp: int = 4) -> int:
     hits = _extract_waypoint_hits(df)
     zero_hits = [h for h in hits if h["waypoint"] == 0]
     if len(zero_hits) >= 2:
-        return total_wp
+        return total_wp + 1 # add 1 to include the second 0->1 transition
     if df.empty:
         return 0
+    if df.iloc[-1]["target_id"] == 0:
+        return total_wp # add 1 to include the second 0->1 transition
     return int(df.iloc[-1]["target_id"])
 
 
