@@ -178,7 +178,16 @@ def compute_trajectory_gap(
         }
     """
     if len(df_sim) < 2 or len(df_real) < 2:
-        return {"mean_gap": 0.0, "segments": 0, "mode": "relative_deltas" if use_relative_deltas else "absolute"}
+        return {
+            "mean_gap": 0.0,
+            "median_gap": 0.0,
+            "max_gap": 0.0,
+            "p95_gap": 0.0,
+            "segments": 0,
+            "mode": "relative_deltas" if use_relative_deltas else "absolute",
+            "gap_times": [],
+            "gap_series": [],
+        }
 
     t_ref, x_ref, y_ref, other_xy = _align_and_interpolate(df_sim, df_real)
     x_other, y_other = other_xy[:, 0], other_xy[:, 1]
@@ -189,20 +198,33 @@ def compute_trajectory_gap(
         dx_other = np.diff(x_other)
         dy_other = np.diff(y_other)
         deltas = np.sqrt((dx_ref - dx_other) ** 2 + (dy_ref - dy_other) ** 2)
+        gap_times = t_ref[1:] if len(t_ref) > 1 else np.array([])
     else:
         pos_diff = np.sqrt((x_ref - x_other) ** 2 + (y_ref - y_other) ** 2)
         # Skip the first point to match the "segments = N-1" description
         deltas = pos_diff[1:] if len(pos_diff) > 1 else pos_diff
+        gap_times = t_ref[1:] if len(t_ref) > 1 else t_ref
 
     segments = len(deltas)
-    mean_gap = float(deltas.sum() / segments) if segments > 0 else 0.0
+    if segments > 0:
+        mean_gap = float(np.mean(deltas))
+        median_gap = float(np.median(deltas))
+        max_gap = float(np.max(deltas))
+        p95_gap = float(np.percentile(deltas, 95))
+    else:
+        mean_gap = median_gap = max_gap = p95_gap = 0.0
 
     return {
         "mean_gap": mean_gap,
+        "median_gap": median_gap,
+        "max_gap": max_gap,
+        "p95_gap": p95_gap,
         "segments": segments,
         "mode": "relative_deltas" if use_relative_deltas else "absolute",
         "aligned_points": len(t_ref),
         "duration": float(t_ref[-1]) if len(t_ref) else 0.0,
+        "gap_times": gap_times.tolist(),
+        "gap_series": deltas.tolist(),
     }
 
 
@@ -281,6 +303,77 @@ def visualize_alignment(df_sim: pd.DataFrame, df_real: pd.DataFrame, title: str 
     plt.ylabel("Y")
     plt.legend()
     plt.grid(True)
+    plt.show()
+
+
+def visualize_interpolated_alignment(
+    df_sim: pd.DataFrame,
+    df_real: pd.DataFrame,
+    use_relative_deltas: bool = False,
+    title: str = "Interpolated Trajectory Comparison",
+) -> None:
+    """
+    Visualize trajectories after aligning df_real to df_sim's timeline via interpolation.
+    Shows: sim path, real path, and real path interpolated onto sim timestamps.
+    """
+    if len(df_sim) < 2 or len(df_real) < 2:
+        print("Not enough points to visualize interpolation.")
+        return
+
+    t_ref, x_ref, y_ref, other_xy = _align_and_interpolate(df_sim, df_real)
+    x_other, y_other = other_xy[:, 0], other_xy[:, 1]
+
+    plt.figure(figsize=(9, 7))
+    plt.plot(df_sim["x"], df_sim["y"], label="Sim (original)", color="blue", alpha=0.8)
+    plt.plot(df_real["x"], df_real["y"], label="Real (original)", color="red", alpha=0.6, linestyle="--")
+    plt.plot(x_other, y_other, label="Real (interpolated onto Sim time)", color="magenta", alpha=0.9)
+    plt.scatter([wp[0] for wp in WAYPOINTS], [wp[1] for wp in WAYPOINTS], c="green", marker="o", label="Waypoints")
+    plt.axis("equal")
+    plt.title(f"{title} | mode={'relative' if use_relative_deltas else 'absolute'} | points={len(t_ref)}")
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+def visualize_gap_over_time(
+    df_sim: pd.DataFrame,
+    df_real: pd.DataFrame,
+    use_relative_deltas: bool = False,
+    title: str = "Gap over time",
+) -> None:
+    """
+    Plot the gap magnitude over time after interpolation/alignment.
+    Uses the same interpolation as compute_trajectory_gap to keep numbers consistent.
+    """
+    if len(df_sim) < 2 or len(df_real) < 2:
+        print("Not enough points to plot gap over time.")
+        return
+
+    t_ref, x_ref, y_ref, other_xy = _align_and_interpolate(df_sim, df_real)
+    x_other, y_other = other_xy[:, 0], other_xy[:, 1]
+
+    if use_relative_deltas:
+        dx_ref = np.diff(x_ref)
+        dy_ref = np.diff(y_ref)
+        dx_other = np.diff(x_other)
+        dy_other = np.diff(y_other)
+        gaps = np.sqrt((dx_ref - dx_other) ** 2 + (dy_ref - dy_other) ** 2)
+        gap_times = t_ref[1:] if len(t_ref) > 1 else np.array([])
+    else:
+        pos_diff = np.sqrt((x_ref - x_other) ** 2 + (y_ref - y_other) ** 2)
+        gaps = pos_diff[1:] if len(pos_diff) > 1 else pos_diff
+        gap_times = t_ref[1:] if len(t_ref) > 1 else t_ref
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(gap_times, gaps, label="Gap magnitude", color="purple")
+    plt.title(f"{title} | mode={'relative' if use_relative_deltas else 'absolute'}")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Gap (m)")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
     plt.show()
 
 
