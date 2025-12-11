@@ -93,7 +93,7 @@ def compute_gap_metric(
     use_relative_deltas: bool = False,
     weights: Optional[Dict[str, float]] = None,
     trajectory_norm: float = DEFAULT_TRAJECTORY_NORM,
-    boundary_limit_dist: float = 0.3,
+    boundary_limit_dist: float = 0.2,
 ) -> Dict[str, Any]:
     """
     Compute sim-to-real gap metrics from two binary log files.
