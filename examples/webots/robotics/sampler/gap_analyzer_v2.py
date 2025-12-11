@@ -16,7 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 import boundary_check  # type: ignore
-from logger.log_decoder import LogDecoder  # type: ignore
+from log_decoder import LogDecoder  # type: ignore
 
 # Configuration
 WAYPOINTS = [

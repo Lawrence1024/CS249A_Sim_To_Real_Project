@@ -29,7 +29,7 @@ if str(ROOT) not in sys.path:
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from logger.log_decoder import LogDecoder  # type: ignore
+from log_decoder import LogDecoder  # type: ignore
 import gap_analyzer_v2 as ga_v2            # type: ignore
 
 log = logging.getLogger(__name__)
@@ -45,11 +45,12 @@ LOG_DIR_CANDIDATES = (
 )
 
 DEFAULT_WEIGHTS: Dict[str, float] = {
-    "waypoint": 0.34,
-    "boundary": 0.33,
-    "trajectory": 0.33,
+    "waypoint": 0.8,
+    "boundary_wp_diff": 0.2,
+    "boundary": 0.6,
+    "trajectory": 0.4,
 }
-DEFAULT_TRAJECTORY_NORM = 1.0
+DEFAULT_TRAJECTORY_NORM = 0.2
 
 
 def _resolve_log_dir(log_dir: Optional[str] = None) -> Path:
@@ -124,15 +125,22 @@ def compute_gap_metric(
     wp_gap = min(1.0, raw_metrics["waypoints_diff"] / float(len(ga_v2.WAYPOINTS)))
     boundary_gap = 1.0 - raw_metrics["boundary_match"]
     norm_val = trajectory_norm if trajectory_norm > 0 else DEFAULT_TRAJECTORY_NORM
-    traj_gap = min(1.0, raw_metrics["trajectory_gap"] / norm_val) if norm_val else 0.0
+    raw_metrics["trajectory_gap"] = min(1.0, raw_metrics["trajectory_gap"] / norm_val) if norm_val else 0.0
+    traj_gap = raw_metrics["trajectory_gap"]
 
     applied_weights = weights or DEFAULT_WEIGHTS
-    combined_error = min(
-        1.0,
-        applied_weights.get("waypoint", 0.0) * wp_gap
-        + applied_weights.get("boundary", 0.0) * boundary_gap
-        + applied_weights.get("trajectory", 0.0) * traj_gap,
-    )
+    if wp_gap == 0:
+        combined_error = min(
+            1.0,
+            + applied_weights.get("boundary", 0.0) * boundary_gap
+            + applied_weights.get("trajectory", 0.0) * traj_gap,
+        )
+    else:
+        combined_error = min(
+            1.0,
+            applied_weights.get("waypoint", 0.0) * wp_gap
+            + applied_weights.get("boundary_wp_diff", 0.0) * boundary_gap
+        )
 
     metrics: Dict[str, Any] = {
         "waypoints_hit_sim": raw_metrics["waypoints_hit_sim"],
@@ -164,6 +172,7 @@ def compute_gap_metric(
 
     if do_visualize:
         ga_v2.visualize_alignment(raw_metrics["df_sim_used"], raw_metrics["df_real_used"])
+    print("Trajectory gap:", metrics["normalized_trajectory_gap"])
 
     return metrics
 

@@ -19,6 +19,8 @@ import os
 import logging
 from pathlib import Path
 import re
+from datetime import datetime
+import pickle
 
 # Add paths for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -33,6 +35,81 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 log = logging.getLogger(__name__)
 
 ROOT = Path(__file__).parent
+
+
+def save_sample_data(
+    checkpoint_dir: str,
+    sample_num: int,
+    params: dict,
+    df_sim=None,
+    df_real=None,
+    gap_metrics: dict = None,
+    log_file_path: str = "sample_data.pkl"
+):
+    """
+    Save sample data to a running pickle file.
+    Each entry contains parameters and both dataframes for one sample.
+    
+    Args:
+        checkpoint_dir: Directory to save the pickle file
+        sample_num: Sample number
+        params: Dictionary of parameters used
+        df_sim: Pandas DataFrame from simulation log (optional)
+        df_real: Pandas DataFrame from real hardware log (optional)
+        gap_metrics: Dictionary of computed gap metrics (optional)
+        log_file_path: Name of the pickle file to save
+    """
+    data_file = os.path.join(checkpoint_dir, log_file_path)
+    
+    # Load existing data or create new list
+    if os.path.exists(data_file):
+        try:
+            with open(data_file, 'rb') as f:
+                all_samples = pickle.load(f)
+        except Exception as e:
+            log.warning(f"Failed to load existing sample data: {e}. Starting fresh.")
+            all_samples = []
+    else:
+        all_samples = []
+    
+    # Create new entry
+    sample_entry = {
+        'sample_num': sample_num,
+        'params': params.copy(),
+        'df_sim': df_sim.copy() if df_sim is not None else None,
+        'df_real': df_real.copy() if df_real is not None else None,
+        'gap_metrics': gap_metrics.copy() if gap_metrics else None,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # Append and save
+    all_samples.append(sample_entry)
+    with open(data_file, 'wb') as f:
+        pickle.dump(all_samples, f)
+    
+    log.info(f"Sample data saved to: {data_file} (total samples: {len(all_samples)})")
+
+
+def load_sample_data(checkpoint_dir: str, log_file_path: str = "sample_data.pkl"):
+    """
+    Load all collected sample data from pickle file.
+    
+    Args:
+        checkpoint_dir: Directory containing the pickle file
+        log_file_path: Name of the pickle file to load
+        
+    Returns:
+        List of sample entries, each containing params, dataframes, and metrics
+    """
+    data_file = os.path.join(checkpoint_dir, log_file_path)
+    if os.path.exists(data_file):
+        try:
+            with open(data_file, 'rb') as f:
+                return pickle.load(f)
+        except Exception as e:
+            log.error(f"Failed to load sample data: {e}")
+            return []
+    return []
 
 
 def update_scenic_file(scenic_file_path: str, params: dict):
@@ -145,7 +222,8 @@ def manual_robotics_evaluation(
     resume_from_checkpoint: bool = True,
     start_sample_num: int = 0,
     param_ranges: dict = None,
-    reset_sampler: bool = False
+    reset_sampler: bool = False,
+    random_seed: int = None
 ):
     """
     Manual robotics evaluation loop - alternative to VerifAI.
@@ -176,6 +254,7 @@ def manual_robotics_evaluation(
                          'waypointThreshold': (0.05, 0.2)
                      }
         reset_sampler: If True, reset the sampler to initial state (even if loading from checkpoint)
+        random_seed: Random seed for reproducibility. If None, no seed is set.
     """
     if sampler_params is None:
         sampler_params = {
@@ -202,6 +281,12 @@ def manual_robotics_evaluation(
     log.info(f"Starting manual robotics evaluation (independent of VerifAI)")
     log.info(f"  Webots scenario: {webots_scenic_file}")
     log.info(f"  Hardware scenario: {hardware_scenic_file}")
+    
+    # Seed random number generator for reproducibility
+    if random_seed is not None:
+        import numpy as np
+        np.random.seed(random_seed)
+        log.info(f"Random seed set to: {random_seed}")
     
     # Create parameter domain from ranges (for VerifAI sampler format)
     # The sampler expects a dictionary of parameter names to Box domains
@@ -280,9 +365,9 @@ def manual_robotics_evaluation(
         print(f"1. Run Webots simulation (using {os.path.basename(webots_scenic_file)})")
         print(f"2. Run hardware (using {os.path.basename(hardware_scenic_file)})")
         print(f"3. Compute multi-objective metric:")
-        print(f"   - Trajectory out of bounds?")
+        print(f"   - Difference in number of waypoints reached")
+        print(f"   - Trajectory out of bounds difference")
         print(f"   - Trajectory difference")
-        print(f"   - Waypoint timing difference")
         print(f"4. Enter metric below (0-1, higher = larger sim-to-real gap)")
         print(f"{'='*60}")
         
@@ -310,12 +395,81 @@ def manual_robotics_evaluation(
                     print("\nAuto-selected log files:")
                     print(f"  sim : {sim_log_path}")
                     print(f"  real: {real_log_path}")
+                    
+                    # Decode dataframes for saving
+                    from log_decoder import LogDecoder
+                    df_sim = LogDecoder.decode_df(str(sim_log_path))
+                    df_real = LogDecoder.decode_df(str(real_log_path))
+                    
+                    if df_sim is None or df_real is None:
+                        raise GapComputationError("Failed to decode log files")
+                    
+                    # Compute metrics
                     gap_metrics = compute_gap_metric(str(sim_log_path), str(real_log_path))
                     metric = gap_metrics["combined_error"]
                     print("\nComputed sim-to-real gap metric:")
                     print(f"  combined_error: {metric:.4f}")
-                    print(f"  lap_time_gap_pct: {gap_metrics['lap_time_gap_pct']:.2f}%")
-                    print(f"  area_ratio_diff: {gap_metrics['ratio_diff']:.4f}")
+                    print(f"\n  Waypoint metrics:")
+                    print(f"    waypoints_hit_sim: {gap_metrics['waypoints_hit_sim']}")
+                    print(f"    waypoints_hit_real: {gap_metrics['waypoints_hit_real']}")
+                    print(f"    waypoints_diff: {gap_metrics['waypoints_diff']}")
+                    print(f"    normalized_waypoint_gap: {gap_metrics['normalized_waypoint_gap']:.4f}")
+                    print(f"\n  Boundary metrics:")
+                    print(f"    boundary_violation_sim: {gap_metrics['boundary_violation_sim']}")
+                    print(f"    boundary_violation_real: {gap_metrics['boundary_violation_real']}")
+                    print(f"    boundary_match: {gap_metrics['boundary_match']}")
+                    print(f"    normalized_boundary_gap: {gap_metrics['normalized_boundary_gap']:.4f}")
+                    print(f"\n  Trajectory metrics:")
+                    print(f"    trajectory_gap_raw: {gap_metrics['trajectory_gap_raw']:.4f}")
+                    print(f"    normalized_trajectory_gap: {gap_metrics['normalized_trajectory_gap']:.4f}")
+                    print(f"    trajectory_mode: {gap_metrics['trajectory_mode']}")
+                    print(f"    trajectory_segments: {gap_metrics['trajectory_segments']}")
+                    print(f"    trajectory_aligned_points: {gap_metrics['trajectory_aligned_points']}")
+                    print(f"    trajectory_duration: {gap_metrics['trajectory_duration']:.2f}s")
+                    
+                    # Append gap metrics to params file
+                    if checkpoint_dir:
+                        params_file = os.path.join(checkpoint_dir, f"sample_{successful_samples + 1}_params.txt")
+                        with open(params_file, 'a') as f:
+                            f.write("\n" + "=" * 60 + "\n")
+                            f.write("Gap Metrics Results\n")
+                            f.write("=" * 60 + "\n\n")
+                            # Summary line matching log format
+                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f")[:-3]
+                            f.write(f"{timestamp} - INFO - Gap metrics v2 -> wp_diff: {gap_metrics['waypoints_diff']} | boundary_match: {gap_metrics['boundary_match']} | traj_gap: {gap_metrics['trajectory_gap_raw']:.4f} ({gap_metrics['trajectory_mode']}) | combined_error: {metric:.4f}\n\n")
+                            f.write("Log files used:\n")
+                            f.write(f"  sim : {sim_log_path}\n")
+                            f.write(f"  real: {real_log_path}\n\n")
+                            f.write("Computed sim-to-real gap metric:\n")
+                            f.write(f"  combined_error: {metric:.4f}\n\n")
+                            f.write("Waypoint metrics:\n")
+                            f.write(f"  waypoints_hit_sim: {gap_metrics['waypoints_hit_sim']}\n")
+                            f.write(f"  waypoints_hit_real: {gap_metrics['waypoints_hit_real']}\n")
+                            f.write(f"  waypoints_diff: {gap_metrics['waypoints_diff']}\n")
+                            f.write(f"  normalized_waypoint_gap: {gap_metrics['normalized_waypoint_gap']:.4f}\n\n")
+                            f.write("Boundary metrics:\n")
+                            f.write(f"  boundary_violation_sim: {gap_metrics['boundary_violation_sim']}\n")
+                            f.write(f"  boundary_violation_real: {gap_metrics['boundary_violation_real']}\n")
+                            f.write(f"  boundary_match: {gap_metrics['boundary_match']}\n")
+                            f.write(f"  normalized_boundary_gap: {gap_metrics['normalized_boundary_gap']:.4f}\n\n")
+                            f.write("Trajectory metrics:\n")
+                            f.write(f"  trajectory_gap_raw: {gap_metrics['trajectory_gap_raw']:.4f}\n")
+                            f.write(f"  normalized_trajectory_gap: {gap_metrics['normalized_trajectory_gap']:.4f}\n")
+                            f.write(f"  trajectory_mode: {gap_metrics['trajectory_mode']}\n")
+                            f.write(f"  trajectory_segments: {gap_metrics['trajectory_segments']}\n")
+                            f.write(f"  trajectory_aligned_points: {gap_metrics['trajectory_aligned_points']}\n")
+                            f.write(f"  trajectory_duration: {gap_metrics['trajectory_duration']:.2f}s\n")
+                        log.info(f"Gap metrics appended to: {params_file}")
+                        
+                        # Save dataframes and parameters to pickle file
+                        save_sample_data(
+                            checkpoint_dir,
+                            successful_samples + 1,
+                            sample,  # The parameters dict
+                            df_sim,
+                            df_real,
+                            gap_metrics
+                        )
                 except GapComputationError as e:
                     log.error(f"Gap computation failed: {e}")
                     continue
@@ -326,6 +480,28 @@ def manual_robotics_evaluation(
                 if metric < 0 or metric > 1:
                     log.warning(f"Metric {metric} outside [0,1] range, clamping...")
                     metric = max(0.0, min(1.0, metric))
+                
+                # Append manually entered metric to params file
+                if checkpoint_dir:
+                    params_file = os.path.join(checkpoint_dir, f"sample_{successful_samples + 1}_params.txt")
+                    with open(params_file, 'a') as f:
+                        f.write("\n" + "=" * 60 + "\n")
+                        f.write("Gap Metrics Results\n")
+                        f.write("=" * 60 + "\n\n")
+                        f.write("Metric manually entered by user:\n")
+                        f.write(f"  combined_error: {metric:.4f}\n")
+                        f.write("\nNote: Detailed gap metrics not computed (metric entered manually)\n")
+                    log.info(f"Gap metrics appended to: {params_file}")
+                    
+                    # Save parameters (but no dataframes since metric was manually entered)
+                    save_sample_data(
+                        checkpoint_dir,
+                        successful_samples + 1,
+                        sample,  # The parameters dict
+                        df_sim=None,
+                        df_real=None,
+                        gap_metrics={'combined_error': metric, 'note': 'manually_entered'}
+                    )
             
             # Update sampler
             sampler.update(sample, metric, log=log)
@@ -378,6 +554,7 @@ if __name__ == "__main__":
         resume_from_checkpoint=True,
         start_sample_num=0,
         param_ranges=param_ranges,
-        reset_sampler=True
+        reset_sampler=True,
+        random_seed=42  # Set to None for no seeding
     )
 
