@@ -463,7 +463,7 @@ def visualize_alignment(
     # Plot violations (only on comparison segments)
     if sim_violations:
         sim_viol_arr = np.array(sim_violations)
-        plt.scatter(sim_viol_arr[:, 0], sim_viol_arr[:, 1], c="orange", ="x", s=50, 
+        plt.scatter(sim_viol_arr[:, 0], sim_viol_arr[:, 1], c="orange", marker="x", s=50, 
                    label=f"Sim violations ({len(sim_violations)})", zorder=5, linewidths=2)
     
     if real_violations:

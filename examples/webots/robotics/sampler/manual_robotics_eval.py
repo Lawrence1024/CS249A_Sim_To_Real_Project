@@ -350,15 +350,27 @@ def manual_robotics_evaluation(
             print(f"⚠ Some files may not have been updated correctly")
         
         # Optionally write parameters to file for reference
+        params_file = None  # Store the actual filename used for this sample
         if checkpoint_dir:
-            params_file = os.path.join(checkpoint_dir, f"sample_{successful_samples + 1}_params.txt")
+            base_params_file = os.path.join(checkpoint_dir, f"sample_{successful_samples + 1}_params.txt")
+            # Check if file exists and find unique filename to avoid overwriting
+            params_file = base_params_file
+            counter = 1
+            while os.path.exists(params_file):
+                # If file exists, append counter to create unique filename
+                base_name = os.path.splitext(base_params_file)[0]
+                params_file = f"{base_name}_{counter}.txt"
+                counter += 1
             with open(params_file, 'w') as f:
                 f.write(f"Sample {successful_samples + 1}/{num_samples}\n\n")
                 f.write("Parameters used:\n")
                 for param_name in sorted(param_domain.keys()):
                     value = sample[param_name]
                     f.write(f"  {param_name}: {value:.4f}\n")
-            log.info(f"Parameters saved to: {params_file}")
+            if params_file != base_params_file:
+                log.info(f"Parameters saved to: {params_file} (original filename already existed)")
+            else:
+                log.info(f"Parameters saved to: {params_file}")
         
         print(f"\n{'='*60}")
         print(f"Next steps:")
@@ -428,8 +440,7 @@ def manual_robotics_evaluation(
                     print(f"    trajectory_duration: {gap_metrics['trajectory_duration']:.2f}s")
                     
                     # Append gap metrics to params file
-                    if checkpoint_dir:
-                        params_file = os.path.join(checkpoint_dir, f"sample_{successful_samples + 1}_params.txt")
+                    if checkpoint_dir and params_file:
                         with open(params_file, 'a') as f:
                             f.write("\n" + "=" * 60 + "\n")
                             f.write("Gap Metrics Results\n")
@@ -482,8 +493,7 @@ def manual_robotics_evaluation(
                     metric = max(0.0, min(1.0, metric))
                 
                 # Append manually entered metric to params file
-                if checkpoint_dir:
-                    params_file = os.path.join(checkpoint_dir, f"sample_{successful_samples + 1}_params.txt")
+                if checkpoint_dir and params_file:
                     with open(params_file, 'a') as f:
                         f.write("\n" + "=" * 60 + "\n")
                         f.write("Gap Metrics Results\n")
