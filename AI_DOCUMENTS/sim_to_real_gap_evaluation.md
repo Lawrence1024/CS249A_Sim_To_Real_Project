@@ -572,9 +572,9 @@ sampler = MultiArmedBanditSampler(
 **Parameter Domain:**
 ```python
 domain = {
-    "forwardSpeed": Interval(20, 100),      # Forward speed range
-    "turnSpeed": Interval(10, 50),          # Turn speed range
-    "waypointThreshold": Interval(0.05, 0.2)  # Waypoint threshold range
+    "forwardSpeed": Interval(30, 70),      # Forward speed range
+    "turnSpeed": Interval(20, 40),          # Turn speed range
+    "waypointThreshold": Interval(0.08, 0.12)  # Waypoint threshold range
 }
 ```
 
@@ -680,9 +680,9 @@ sampler = MultiArmedBanditSampler.load_state("checkpoints/sampler_state.pkl")
 1. **Initialize Sampler**
    ```python
    domain = {
-       "forwardSpeed": Interval(20, 100),
-       "turnSpeed": Interval(10, 50),
-       "waypointThreshold": Interval(0.05, 0.2)
+       "forwardSpeed": Interval(30, 70),
+       "turnSpeed": Interval(20, 40),
+       "waypointThreshold": Interval(0.08, 0.12)
    }
    sampler = MultiArmedBanditSampler(domain, buckets=10)
    ```

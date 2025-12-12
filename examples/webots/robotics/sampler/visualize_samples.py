@@ -10,6 +10,7 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from mpl_toolkits.mplot3d import Axes3D
 from pathlib import Path
 
@@ -192,7 +193,31 @@ def visualize_samples_3d(
     cbar1.set_label('Combined Error (Sim-to-Real Gap)', rotation=270, labelpad=20)
     
     # Add legend - move to upper right to avoid overlap with threshold annotation
-    ax_3d.legend(loc='upper right', fontsize=9, framealpha=0.9)
+    # Customize legend handles to be hollow (no fill color)
+    handles, labels = ax_3d.get_legend_handles_labels()
+    if handles:
+        # Create hollow markers for legend
+        new_handles = []
+        for handle, label in zip(handles, labels):
+            # Determine marker from label (works for both 2D and 3D plots)
+            if 'Finished Lap (True)' in label:
+                marker = 'o'
+            elif 'Not Finished Lap (False)' in label:
+                marker = 's'
+            else:
+                # Try to get marker from handle if possible
+                try:
+                    marker = handle.get_marker()
+                except AttributeError:
+                    marker = 'o'  # default fallback
+            
+            new_handle = Line2D([0], [0], marker=marker, linestyle='None', 
+                               markersize=8, markeredgecolor='black', 
+                               markerfacecolor='none', markeredgewidth=1.5)
+            new_handles.append(new_handle)
+        ax_3d.legend(new_handles, labels, loc='upper right', fontsize=9, framealpha=0.9)
+    else:
+        ax_3d.legend(loc='upper right', fontsize=9, framealpha=0.9)
     
     if gap_threshold:
         # Move threshold annotation lower to avoid overlap with title and legend
@@ -254,7 +279,30 @@ def visualize_samples_3d(
         )
     
     scatter1 = scatter1_finished if len(fs_finished) > 0 else scatter1_not_finished
-    ax1.legend(loc='best', fontsize=9)
+    # Customize legend handles to be hollow (no fill color)
+    handles, labels = ax1.get_legend_handles_labels()
+    if handles:
+        new_handles = []
+        for handle, label in zip(handles, labels):
+            # Determine marker from label (works for both 2D and 3D plots)
+            if 'Finished Lap (True)' in label:
+                marker = 'o'
+            elif 'Not Finished Lap (False)' in label:
+                marker = 's'
+            else:
+                # Try to get marker from handle if possible
+                try:
+                    marker = handle.get_marker()
+                except AttributeError:
+                    marker = 'o'  # default fallback
+            
+            new_handle = Line2D([0], [0], marker=marker, linestyle='None', 
+                               markersize=8, markeredgecolor='black', 
+                               markerfacecolor='none', markeredgewidth=1.5)
+            new_handles.append(new_handle)
+        ax1.legend(new_handles, labels, loc='best', fontsize=9)
+    else:
+        ax1.legend(loc='best', fontsize=9)
     ax1.set_xlabel('forwardSpeed', fontsize=12, fontweight='bold')
     ax1.set_ylabel('waypointThreshold (tolerance)', fontsize=12, fontweight='bold')
     ax1.set_title(
@@ -312,7 +360,30 @@ def visualize_samples_3d(
         )
     
     scatter2 = scatter2_finished if len(fs_finished) > 0 else scatter2_not_finished
-    ax2.legend(loc='best', fontsize=9)
+    # Customize legend handles to be hollow (no fill color)
+    handles, labels = ax2.get_legend_handles_labels()
+    if handles:
+        new_handles = []
+        for handle, label in zip(handles, labels):
+            # Determine marker from label (works for both 2D and 3D plots)
+            if 'Finished Lap (True)' in label:
+                marker = 'o'
+            elif 'Not Finished Lap (False)' in label:
+                marker = 's'
+            else:
+                # Try to get marker from handle if possible
+                try:
+                    marker = handle.get_marker()
+                except AttributeError:
+                    marker = 'o'  # default fallback
+            
+            new_handle = Line2D([0], [0], marker=marker, linestyle='None', 
+                               markersize=8, markeredgecolor='black', 
+                               markerfacecolor='none', markeredgewidth=1.5)
+            new_handles.append(new_handle)
+        ax2.legend(new_handles, labels, loc='best', fontsize=9)
+    else:
+        ax2.legend(loc='best', fontsize=9)
     ax2.set_xlabel('turnSpeed', fontsize=12, fontweight='bold')
     ax2.set_ylabel('waypointThreshold (tolerance)', fontsize=12, fontweight='bold')
     ax2.set_title(
@@ -370,7 +441,30 @@ def visualize_samples_3d(
         )
     
     scatter3 = scatter3_finished if len(fs_finished) > 0 else scatter3_not_finished
-    ax3.legend(loc='best', fontsize=9)
+    # Customize legend handles to be hollow (no fill color)
+    handles, labels = ax3.get_legend_handles_labels()
+    if handles:
+        new_handles = []
+        for handle, label in zip(handles, labels):
+            # Determine marker from label (works for both 2D and 3D plots)
+            if 'Finished Lap (True)' in label:
+                marker = 'o'
+            elif 'Not Finished Lap (False)' in label:
+                marker = 's'
+            else:
+                # Try to get marker from handle if possible
+                try:
+                    marker = handle.get_marker()
+                except AttributeError:
+                    marker = 'o'  # default fallback
+            
+            new_handle = Line2D([0], [0], marker=marker, linestyle='None', 
+                               markersize=8, markeredgecolor='black', 
+                               markerfacecolor='none', markeredgewidth=1.5)
+            new_handles.append(new_handle)
+        ax3.legend(new_handles, labels, loc='best', fontsize=9)
+    else:
+        ax3.legend(loc='best', fontsize=9)
     ax3.set_xlabel('forwardSpeed', fontsize=12, fontweight='bold')
     ax3.set_ylabel('turnSpeed', fontsize=12, fontweight='bold')
     ax3.set_title(
@@ -505,7 +599,30 @@ def visualize_samples_2d_projections(
     axes[0].set_ylabel('turnSpeed', fontweight='bold')
     axes[0].set_title('forwardSpeed vs turnSpeed')
     axes[0].grid(True, alpha=0.3)
-    axes[0].legend(loc='best', fontsize=8)
+    # Customize legend handles to be hollow (no fill color)
+    handles, labels = axes[0].get_legend_handles_labels()
+    if handles:
+        new_handles = []
+        for handle, label in zip(handles, labels):
+            # Determine marker from label (works for both 2D and 3D plots)
+            if 'Finished Lap (True)' in label:
+                marker = 'o'
+            elif 'Not Finished Lap (False)' in label:
+                marker = 's'
+            else:
+                # Try to get marker from handle if possible
+                try:
+                    marker = handle.get_marker()
+                except AttributeError:
+                    marker = 'o'  # default fallback
+            
+            new_handle = Line2D([0], [0], marker=marker, linestyle='None', 
+                               markersize=8, markeredgecolor='black', 
+                               markerfacecolor='none', markeredgewidth=1.5)
+            new_handles.append(new_handle)
+        axes[0].legend(new_handles, labels, loc='best', fontsize=8)
+    else:
+        axes[0].legend(loc='best', fontsize=8)
     
     # Plot 2: forwardSpeed vs waypointThreshold
     if len(fs_finished) > 0:
@@ -528,7 +645,30 @@ def visualize_samples_2d_projections(
     axes[1].set_ylabel('waypointThreshold', fontweight='bold')
     axes[1].set_title('forwardSpeed vs waypointThreshold')
     axes[1].grid(True, alpha=0.3)
-    axes[1].legend(loc='best', fontsize=8)
+    # Customize legend handles to be hollow (no fill color)
+    handles, labels = axes[1].get_legend_handles_labels()
+    if handles:
+        new_handles = []
+        for handle, label in zip(handles, labels):
+            # Determine marker from label (works for both 2D and 3D plots)
+            if 'Finished Lap (True)' in label:
+                marker = 'o'
+            elif 'Not Finished Lap (False)' in label:
+                marker = 's'
+            else:
+                # Try to get marker from handle if possible
+                try:
+                    marker = handle.get_marker()
+                except AttributeError:
+                    marker = 'o'  # default fallback
+            
+            new_handle = Line2D([0], [0], marker=marker, linestyle='None', 
+                               markersize=8, markeredgecolor='black', 
+                               markerfacecolor='none', markeredgewidth=1.5)
+            new_handles.append(new_handle)
+        axes[1].legend(new_handles, labels, loc='best', fontsize=8)
+    else:
+        axes[1].legend(loc='best', fontsize=8)
     
     # Plot 3: turnSpeed vs waypointThreshold
     scatter3 = None
@@ -552,7 +692,30 @@ def visualize_samples_2d_projections(
     axes[2].set_ylabel('waypointThreshold', fontweight='bold')
     axes[2].set_title('turnSpeed vs waypointThreshold')
     axes[2].grid(True, alpha=0.3)
-    axes[2].legend(loc='best', fontsize=8)
+    # Customize legend handles to be hollow (no fill color)
+    handles, labels = axes[2].get_legend_handles_labels()
+    if handles:
+        new_handles = []
+        for handle, label in zip(handles, labels):
+            # Determine marker from label (works for both 2D and 3D plots)
+            if 'Finished Lap (True)' in label:
+                marker = 'o'
+            elif 'Not Finished Lap (False)' in label:
+                marker = 's'
+            else:
+                # Try to get marker from handle if possible
+                try:
+                    marker = handle.get_marker()
+                except AttributeError:
+                    marker = 'o'  # default fallback
+            
+            new_handle = Line2D([0], [0], marker=marker, linestyle='None', 
+                               markersize=8, markeredgecolor='black', 
+                               markerfacecolor='none', markeredgewidth=1.5)
+            new_handles.append(new_handle)
+        axes[2].legend(new_handles, labels, loc='best', fontsize=8)
+    else:
+        axes[2].legend(loc='best', fontsize=8)
     
     # Add colorbar (use scatter3 if it exists, otherwise use combined_errors)
     if scatter3 is not None:
