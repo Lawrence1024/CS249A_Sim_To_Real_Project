@@ -33,7 +33,7 @@ class TrajectoryGapConfig:
 
     use_relative_deltas: bool = False
     trajectory_norm: float = 1.0  # meters; used to clamp trajectory gap to [0, 1]
-    boundary_limit_dist: float = 0.3
+    boundary_limit_dist: float = 0.25
 
 
 def _extract_waypoint_hits(df: pd.DataFrame) -> List[Dict[str, Any]]:
@@ -70,7 +70,7 @@ def num_waypoints_hit_v2(df: pd.DataFrame, total_wp: int = 4) -> int:
     zero_hits = [h for h in hits if h["waypoint"] == 0]
     if len(zero_hits) >= 2:
         return total_wp + 1 # add 1 to include the second 0->1 transition
-    if df.empty:
+    if df.empty or len(hits) == 0:
         return 0
     if df.iloc[-1]["target_id"] == 0:
         return total_wp # add 1 to include the second 0->1 transition
@@ -92,13 +92,56 @@ def _segment_full_run(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict[str, An
     elif hits_all:
         end_idx = hits_all[-1]["index"]
     else:
-        end_idx = df.index[-1]
+        end_idx = df.index[-1]  # Use final row if no transitions exist
 
     first_idx = df.index[0]
     trimmed_df = df.loc[first_idx:end_idx].copy()
     hits_trimmed = [h for h in hits_all if h["index"] <= end_idx]
     return trimmed_df, hits_trimmed
 
+def _truncate_for_trajectory_comparison(
+    df_sim: pd.DataFrame,
+    hits_sim: List[Dict[str, Any]],
+    df_real: pd.DataFrame,
+    hits_real: List[Dict[str, Any]],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Truncate both runs for trajectory comparison:
+    1. Start from the first data point (index 0)
+    2. End at the same last waypoint hit (based on common_hits)
+    
+    This ensures trajectory comparison starts from the very beginning of the log.
+    For trajectory comparison, we allow common_hits >= 1 (unlike boundary checking which needs >= 2).
+    """
+    common_hits = min(len(hits_sim), len(hits_real))
+    
+    # If no hits at all, use full span
+    if common_hits == 0:
+        return df_sim.copy(), df_real.copy()
+    
+    # Determine end indices based on common hits
+    # If common_hits == 5, waypoint 0 has been hit twice (full lap completed)
+    if common_hits == 5:
+        zero_hits_sim = [i for i, h in enumerate(hits_sim) if h["waypoint"] == 0]
+        if len(zero_hits_sim) >= 2:
+            last_hit_idx_sim = hits_sim[zero_hits_sim[1]]["index"]
+        else:
+            last_hit_idx_sim = hits_sim[-1]["index"]
+        
+        zero_hits_real = [i for i, h in enumerate(hits_real) if h["waypoint"] == 0]
+        if len(zero_hits_real) >= 2:
+            last_hit_idx_real = hits_real[zero_hits_real[1]]["index"]
+        else:
+            last_hit_idx_real = hits_real[-1]["index"]
+    else:
+        last_hit_idx_sim = hits_sim[common_hits - 1]["index"]
+        last_hit_idx_real = hits_real[common_hits - 1]["index"]
+
+    # Truncate from index 0 (start) to last hit (inclusive)
+    df_sim_trunc = df_sim.loc[df_sim.index[0] : last_hit_idx_sim].copy()
+    df_real_trunc = df_real.loc[df_real.index[0] : last_hit_idx_real].copy()
+
+    return df_sim_trunc, df_real_trunc
 
 def _truncate_to_common_hits(
     df_sim: pd.DataFrame,
@@ -107,29 +150,68 @@ def _truncate_to_common_hits(
     hits_real: List[Dict[str, Any]],
 ) -> Tuple[pd.DataFrame, pd.DataFrame, List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
-    Truncate both runs so they end at the same number of waypoint hits.
-    If no hits exist in either run, keep the full data.
+    Truncate both runs so they:
+    1. Start from the first waypoint hit
+    2. End at the same number of waypoint hits (min_hits)
+    
+    If no hits exist in either run or less than 2 hits, return empty dataframes.
     """
     common_hits = min(len(hits_sim), len(hits_real))
-    if common_hits == 0:
-        return df_sim, df_real, hits_sim, hits_real
+    if common_hits == 0 or common_hits < 2:
+        # Return empty dataframes if insufficient hits
+        return pd.DataFrame(), pd.DataFrame(), [], []
 
-    end_idx_sim = hits_sim[common_hits - 1]["index"]
-    end_idx_real = hits_real[common_hits - 1]["index"]
+    # Get first and last hit indices for both
+    first_hit_idx_sim = hits_sim[0]["index"]
+    
+    # If common_hits == 5, waypoint 0 has been hit twice (full lap completed)
+    # Truncate at the second time waypoint 0 is hit
+    if common_hits == 5:
+        # Find the second occurrence of waypoint 0 being hit
+        zero_hits_sim = [i for i, h in enumerate(hits_sim) if h["waypoint"] == 0]
+        if len(zero_hits_sim) >= 2:
+            last_hit_idx_sim = hits_sim[zero_hits_sim[1]]["index"]
+        else:
+            last_hit_idx_sim = hits_sim[-1]["index"]
+    else:
+        last_hit_idx_sim = hits_sim[common_hits - 1]["index"]
+    
+    first_hit_idx_real = hits_real[0]["index"]
+    
+    # If common_hits == 5, waypoint 0 has been hit twice (full lap completed)
+    # Truncate at the second time waypoint 0 is hit
+    if common_hits == 5:
+        # Find the second occurrence of waypoint 0 being hit
+        zero_hits_real = [i for i, h in enumerate(hits_real) if h["waypoint"] == 0]
+        if len(zero_hits_real) >= 2:
+            last_hit_idx_real = hits_real[zero_hits_real[1]]["index"]
+        else:
+            last_hit_idx_real = hits_real[-1]["index"]
+    else:
+        last_hit_idx_real = hits_real[common_hits - 1]["index"]
 
-    df_sim_trunc = df_sim.loc[df_sim.index[0] : end_idx_sim].copy()
-    df_real_trunc = df_real.loc[df_real.index[0] : end_idx_real].copy()
+    # Truncate from first hit to last hit (inclusive)
+    df_sim_trunc = df_sim.loc[first_hit_idx_sim : last_hit_idx_sim].copy()
+    df_real_trunc = df_real.loc[first_hit_idx_real : last_hit_idx_real].copy()
 
-    hits_sim_trunc = [h for h in hits_sim if h["index"] <= end_idx_sim]
-    hits_real_trunc = [h for h in hits_real if h["index"] <= end_idx_real]
+    hits_sim_trunc = [h for h in hits_sim[:common_hits]]
+    hits_real_trunc = [h for h in hits_real[:common_hits]]
 
     return df_sim_trunc, df_real_trunc, hits_sim_trunc, hits_real_trunc
 
 
 def _boundary_violation_exists(
-    df: pd.DataFrame, waypoints=WAYPOINTS, limit_dist: float = 0.3
+    df: pd.DataFrame, waypoints=WAYPOINTS, limit_dist: float = 0.2 #Modify post_processing instead!!!
 ) -> bool:
-    """Return True if any point violates the square boundary."""
+    """Return True if any point violates the square boundary.
+    CHECKS THE ENTIRE DATAFRAME FOR BOUNDARY VIOLATIONS, SO DO TRUNCATE FIRST!!!
+    """
+    if df.empty:
+        return False
+    
+    
+    # If no waypoint hits, check the entire trajectory
+    # Check boundary violations only in the filtered range
     for _, row in df.iterrows():
         if boundary_check.check_square_boundary_violation(
             (row["x"], row["y"]), waypoints, limit_dist=limit_dist
@@ -241,36 +323,46 @@ def compute_sim_real_gap_v2(
     df_real_span, hits_real = _segment_full_run(df_real)
 
     # 2) Waypoint counts
-    wp_hit_sim = num_waypoints_hit_v2(df_sim_span, len(WAYPOINTS))
-    wp_hit_real = num_waypoints_hit_v2(df_real_span, len(WAYPOINTS))
+    wp_hit_sim = num_waypoints_hit_v2(df_sim, len(WAYPOINTS))
+    wp_hit_real = num_waypoints_hit_v2(df_real, len(WAYPOINTS))
     wp_diff = abs(wp_hit_sim - wp_hit_real)
 
-    # 3) Truncate to common hits, then trim to the shorter time span.
+    if wp_hit_sim == wp_hit_real == 0:
+        # Return zero gap with compatible structure
+        return {
+            "waypoints_hit_sim": 0,
+            "waypoints_hit_real": 0,
+            "waypoints_diff": 0,
+            "hits_considered": 0,
+            "boundary_violation_sim": False,
+            "boundary_violation_real": False,
+            "boundary_match": 1,  # Both have no violations, so they match
+            "trajectory_gap": 0.0,
+            "trajectory_mode": "relative_deltas" if config.use_relative_deltas else "absolute",
+            "trajectory_segments": 0,
+            "trajectory_aligned_points": 0,
+            "trajectory_duration": 0.0,
+            "df_sim_used": pd.DataFrame(),
+            "df_real_used": pd.DataFrame(),
+        } 
+
+    # 3) Truncate to common hits: start from first waypoint hit, end at same last waypoint hit
     df_sim_common, df_real_common, hits_sim_common, hits_real_common = _truncate_to_common_hits(
         df_sim_span, hits_sim, df_real_span, hits_real
     )
-
-    if not df_sim_common.empty and not df_real_common.empty:
-        end_time = min(
-            df_sim_common["timestamp"].iloc[-1] - df_sim_common["timestamp"].iloc[0],
-            df_real_common["timestamp"].iloc[-1] - df_real_common["timestamp"].iloc[0],
-        )
-        # Ensure both are cut to the shorter relative duration
-        df_sim_common = df_sim_common[
-            (df_sim_common["timestamp"] - df_sim_common["timestamp"].iloc[0]) <= end_time
-        ]
-        df_real_common = df_real_common[
-            (df_real_common["timestamp"] - df_real_common["timestamp"].iloc[0]) <= end_time
-        ]
 
     # 4) Boundary agreement
     violation_sim = _boundary_violation_exists(df_sim_common, limit_dist=config.boundary_limit_dist)
     violation_real = _boundary_violation_exists(df_real_common, limit_dist=config.boundary_limit_dist)
     boundary_match = 1 if violation_sim == violation_real else 0
 
-    # 5) Trajectory gap
+    
+    # 5) Trajectory gap - start from first data point, end at same last waypoint hit
+    df_sim_traj, df_real_traj = _truncate_for_trajectory_comparison(
+        df_sim_span, hits_sim, df_real_span, hits_real
+    )
     traj_gap = compute_trajectory_gap(
-        df_sim_common, df_real_common, use_relative_deltas=config.use_relative_deltas
+        df_sim_traj, df_real_traj, use_relative_deltas=config.use_relative_deltas
     )
 
     return {
@@ -291,19 +383,145 @@ def compute_sim_real_gap_v2(
     }
 
 
-def visualize_alignment(df_sim: pd.DataFrame, df_real: pd.DataFrame, title: str = "Sim vs Real (v2)") -> None:
-    """Quick overlay visualization of the trajectories being compared."""
-    plt.figure(figsize=(8, 6))
-    plt.plot(df_sim["x"], df_sim["y"], label="Sim", color="blue")
-    plt.plot(df_real["x"], df_real["y"], label="Real", color="red")
-    plt.scatter([wp[0] for wp in WAYPOINTS], [wp[1] for wp in WAYPOINTS], c="green", marker="o", label="Waypoints")
+def visualize_alignment(
+    df_sim: pd.DataFrame, 
+    df_real: pd.DataFrame, 
+    title: str = "Sim vs Real (v2)",
+    limit_dist: float = 0.25,
+    show_boundaries: bool = True,
+    already_truncated: bool = False
+) -> None:
+    """Quick overlay visualization of the trajectories being compared.
+    Shows only the truncated segments used for boundary violation comparison
+    (as defined in _truncate_to_common_hits: first hit to last hit).
+    
+    Args:
+        df_sim: Simulation trajectory dataframe
+        df_real: Real trajectory dataframe
+        title: Plot title
+        limit_dist: Boundary limit distance for violation checking
+        show_boundaries: Whether to draw boundary rectangles
+        already_truncated: If True, assumes dataframes are already truncated (from metrics)
+    """
+    plt.figure(figsize=(10, 8))
+    
+    # Get truncated segments (same logic as metrics)
+    if already_truncated:
+        # Dataframes are already truncated (e.g., from metrics), use as-is
+        df_sim_compare = df_sim
+        df_real_compare = df_real
+    else:
+        # 1) Segment full run (trajectories from start to last waypoint hit)
+        df_sim_span, hits_sim = _segment_full_run(df_sim)
+        df_real_span, hits_real = _segment_full_run(df_real)
+        
+        # 2) Truncate to common hits (segments used for comparison)
+        df_sim_compare, df_real_compare, hits_sim_compare, hits_real_compare = _truncate_to_common_hits(
+            df_sim_span, hits_sim, df_real_span, hits_real
+        )
+        
+        # If comparison segments are empty, use full span (but warn)
+        if df_sim_compare.empty or df_real_compare.empty:
+            print("Warning: Truncation resulted in empty dataframes, showing full span")
+            df_sim_compare = df_sim_span
+            df_real_compare = df_real_span
+    
+    # Separate violating and non-violating points in the comparison segments
+    sim_violations = []
+    sim_safe = []
+    real_violations = []
+    real_safe = []
+    
+    for _, row in df_sim_compare.iterrows():
+        pos = (row["x"], row["y"])
+        is_violation = boundary_check.check_square_boundary_violation(
+            pos, WAYPOINTS, limit_dist=limit_dist
+        )
+        if is_violation:
+            sim_violations.append(pos)
+        else:
+            sim_safe.append(pos)
+    
+    for _, row in df_real_compare.iterrows():
+        pos = (row["x"], row["y"])
+        is_violation = boundary_check.check_square_boundary_violation(
+            pos, WAYPOINTS, limit_dist=limit_dist
+        )
+        if is_violation:
+            real_violations.append(pos)
+        else:
+            real_safe.append(pos)
+    
+    # Plot safe trajectories (only comparison segments)
+    if sim_safe:
+        sim_safe_arr = np.array(sim_safe)
+        plt.plot(sim_safe_arr[:, 0], sim_safe_arr[:, 1], label="Sim (safe)", color="blue", alpha=0.6, linewidth=1.5)
+    if real_safe:
+        real_safe_arr = np.array(real_safe)
+        plt.plot(real_safe_arr[:, 0], real_safe_arr[:, 1], label="Real (safe)", color="red", alpha=0.6, linewidth=1.5)
+    
+    # Plot violations (only on comparison segments)
+    if sim_violations:
+        sim_viol_arr = np.array(sim_violations)
+        plt.scatter(sim_viol_arr[:, 0], sim_viol_arr[:, 1], c="orange", ="x", s=50, 
+                   label=f"Sim violations ({len(sim_violations)})", zorder=5, linewidths=2)
+    
+    if real_violations:
+        real_viol_arr = np.array(real_violations)
+        plt.scatter(real_viol_arr[:, 0], real_viol_arr[:, 1], c="magenta", marker="x", s=50, 
+                   label=f"Real violations ({len(real_violations)})", zorder=5, linewidths=2)
+    
+    # Plot waypoints
+    plt.scatter([wp[0] for wp in WAYPOINTS], [wp[1] for wp in WAYPOINTS], c="green", marker="o", s=100, label="Waypoints", zorder=6)
+    
+    # Draw boundaries if requested
+    if show_boundaries:
+        _draw_boundaries(plt, limit_dist)
+    
     plt.axis("equal")
     plt.title(title)
     plt.xlabel("X")
     plt.ylabel("Y")
-    plt.legend()
-    plt.grid(True)
+    plt.legend(loc='best')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
     plt.show()
+
+
+def _draw_boundaries(plt, limit_dist: float = 0.25):
+    """Helper function to draw inner and outer boundaries."""
+    from matplotlib.patches import Rectangle
+    import matplotlib.patches as mpatches
+    
+    # Calculate bounding box of waypoints
+    wp_x = [wp[0] for wp in WAYPOINTS]
+    wp_y = [wp[1] for wp in WAYPOINTS]
+    min_x, max_x = min(wp_x), max(wp_x)
+    min_y, max_y = min(wp_y), max(wp_y)
+    
+    # Calculate rectangle dimensions
+    width = max_x - min_x
+    height = max_y - min_y
+    
+    # Outer boundary (red, dashed)
+    outer_rect = Rectangle(
+        (min_x - limit_dist, min_y - limit_dist),
+        width + 2 * limit_dist,
+        height + 2 * limit_dist,
+        linewidth=2, edgecolor='red', facecolor='none', linestyle='--', alpha=0.7, label=f'Outer boundary (±{limit_dist}m)'
+    )
+    plt.gca().add_patch(outer_rect)
+    
+    # Inner boundary (blue, dashed)
+    inner_rect = Rectangle(
+        (min_x + limit_dist, min_y + limit_dist),
+        width - 2 * limit_dist,
+        height - 2 * limit_dist,
+        linewidth=2, edgecolor='blue', facecolor='none', linestyle='--', alpha=0.7, label=f'Inner boundary (±{limit_dist}m)'
+    )
+    # Only draw inner if it's valid (positive dimensions)
+    if width > 2 * limit_dist and height > 2 * limit_dist:
+        plt.gca().add_patch(inner_rect)
 
 
 def visualize_interpolated_alignment(
@@ -311,68 +529,97 @@ def visualize_interpolated_alignment(
     df_real: pd.DataFrame,
     use_relative_deltas: bool = False,
     title: str = "Interpolated Trajectory Comparison",
+    limit_dist: float = 0.25,
+    show_boundaries: bool = True,
 ) -> None:
     """
     Visualize trajectories after aligning df_real to df_sim's timeline via interpolation.
-    Shows: sim path, real path, and real path interpolated onto sim timestamps.
+    Shows only the truncated segments used for boundary violation comparison
+    (as defined in _truncate_to_common_hits: first hit to last hit).
     """
     if len(df_sim) < 2 or len(df_real) < 2:
         print("Not enough points to visualize interpolation.")
         return
 
-    t_ref, x_ref, y_ref, other_xy = _align_and_interpolate(df_sim, df_real)
+    # 1) Segment full run (trajectories from start to last waypoint hit)
+    df_sim_span, hits_sim = _segment_full_run(df_sim)
+    df_real_span, hits_real = _segment_full_run(df_real)
+    
+    # 2) Truncate to common hits (segments used for comparison)
+    df_sim_compare, df_real_compare, hits_sim_compare, hits_real_compare = _truncate_to_common_hits(
+        df_sim_span, hits_sim, df_real_span, hits_real
+    )
+    
+    # If comparison segments are empty, use full span (but warn)
+    if df_sim_compare.empty or df_real_compare.empty:
+        print("Warning: Truncation resulted in empty dataframes, using full span")
+        df_sim_compare = df_sim_span
+        df_real_compare = df_real_span
+
+    # Align and interpolate the comparison segments
+    t_ref, x_ref, y_ref, other_xy = _align_and_interpolate(df_sim_compare, df_real_compare)
     x_other, y_other = other_xy[:, 0], other_xy[:, 1]
 
-    plt.figure(figsize=(9, 7))
-    plt.plot(df_sim["x"], df_sim["y"], label="Sim (original)", color="blue", alpha=0.8)
-    plt.plot(df_real["x"], df_real["y"], label="Real (original)", color="red", alpha=0.6, linestyle="--")
-    plt.plot(x_other, y_other, label="Real (interpolated onto Sim time)", color="magenta", alpha=0.9)
-    plt.scatter([wp[0] for wp in WAYPOINTS], [wp[1] for wp in WAYPOINTS], c="green", marker="o", label="Waypoints")
+    # Separate violating and non-violating points in interpolated comparison data
+    sim_violations = []
+    sim_safe = []
+    real_violations = []
+    real_safe = []
+    
+    for i in range(len(x_ref)):
+        sim_pos = (x_ref[i], y_ref[i])
+        real_pos = (x_other[i], y_other[i])
+        
+        # Check sim
+        sim_is_violation = boundary_check.check_square_boundary_violation(
+            sim_pos, WAYPOINTS, limit_dist=limit_dist
+        )
+        if sim_is_violation:
+            sim_violations.append(sim_pos)
+        else:
+            sim_safe.append(sim_pos)
+        
+        # Check real
+        real_is_violation = boundary_check.check_square_boundary_violation(
+            real_pos, WAYPOINTS, limit_dist=limit_dist
+        )
+        if real_is_violation:
+            real_violations.append(real_pos)
+        else:
+            real_safe.append(real_pos)
+
+    plt.figure(figsize=(10, 8))
+    
+    # Plot safe interpolated trajectories (only comparison segments)
+    if sim_safe:
+        sim_safe_arr = np.array(sim_safe)
+        plt.plot(sim_safe_arr[:, 0], sim_safe_arr[:, 1], label="Sim (interpolated, safe)", color="blue", alpha=0.7, linewidth=1.5)
+    if real_safe:
+        real_safe_arr = np.array(real_safe)
+        plt.plot(real_safe_arr[:, 0], real_safe_arr[:, 1], label="Real (interpolated, safe)", color="magenta", alpha=0.7, linewidth=1.5)
+    
+    # Mark violations only on interpolated comparison segments
+    if sim_violations:
+        sim_viol_arr = np.array(sim_violations)
+        plt.scatter(sim_viol_arr[:, 0], sim_viol_arr[:, 1], c="orange", marker="x", s=50, 
+                   label=f"Sim violations ({len(sim_violations)})", zorder=5, linewidths=2)
+    if real_violations:
+        real_viol_arr = np.array(real_violations)
+        plt.scatter(real_viol_arr[:, 0], real_viol_arr[:, 1], c="magenta", marker="x", s=50, 
+                   label=f"Real violations ({len(real_violations)})", zorder=5, linewidths=2)
+    
+    plt.scatter([wp[0] for wp in WAYPOINTS], [wp[1] for wp in WAYPOINTS], c="green", marker="o", s=100, label="Waypoints", zorder=6)
+    
+    # Draw boundaries if requested
+    if show_boundaries:
+        _draw_boundaries(plt, limit_dist)
+    
     plt.axis("equal")
     plt.title(f"{title} | mode={'relative' if use_relative_deltas else 'absolute'} | points={len(t_ref)}")
     plt.xlabel("X")
     plt.ylabel("Y")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-def visualize_gap_over_time(
-    df_sim: pd.DataFrame,
-    df_real: pd.DataFrame,
-    use_relative_deltas: bool = False,
-    title: str = "Gap over time",
-) -> None:
-    """
-    Plot the gap magnitude over time after interpolation/alignment.
-    Uses the same interpolation as compute_trajectory_gap to keep numbers consistent.
-    """
-    if len(df_sim) < 2 or len(df_real) < 2:
-        print("Not enough points to plot gap over time.")
-        return
-
-    t_ref, x_ref, y_ref, other_xy = _align_and_interpolate(df_sim, df_real)
-    x_other, y_other = other_xy[:, 0], other_xy[:, 1]
-
-    if use_relative_deltas:
-        dx_ref = np.diff(x_ref)
-        dy_ref = np.diff(y_ref)
-        dx_other = np.diff(x_other)
-        dy_other = np.diff(y_other)
-        gaps = np.sqrt((dx_ref - dx_other) ** 2 + (dy_ref - dy_other) ** 2)
-        gap_times = t_ref[1:] if len(t_ref) > 1 else np.array([])
-    else:
-        pos_diff = np.sqrt((x_ref - x_other) ** 2 + (y_ref - y_other) ** 2)
-        gaps = pos_diff[1:] if len(pos_diff) > 1 else pos_diff
-        gap_times = t_ref[1:] if len(t_ref) > 1 else t_ref
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(gap_times, gaps, label="Gap magnitude", color="purple")
-    plt.title(f"{title} | mode={'relative' if use_relative_deltas else 'absolute'}")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Gap (m)")
-    plt.grid(True)
-    plt.legend()
+    plt.legend(loc='best')
+    plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
 
@@ -393,18 +640,25 @@ def run_sim_to_real_analysis(
     metrics = compute_sim_real_gap_v2(df_sim, df_real, config=config)
 
     if do_visualize:
-        visualize_alignment(metrics["df_sim_used"], metrics["df_real_used"])
+        # Pass original dataframes so visualization can show full trajectories
+        # but mark violations only on the comparison segments
+        visualize_alignment(
+            df_sim, 
+            df_real,
+            limit_dist=config.boundary_limit_dist,
+            already_truncated=False
+        )
 
     return metrics
 
 
 if __name__ == "__main__":
-    SIM_LOG_FILE = str(ROOT.parent / "log" / "fast_log_1765330653.bin")
-    REAL_LOG_FILE = str(ROOT.parent / "log" / "fast_log_1765330805.bin")
+    SIM_LOG_FILE = str(ROOT.parent / "log" / "fast_log_1765495926.bin")
+    REAL_LOG_FILE = str(ROOT.parent / "log" / "fast_log_1765495955.bin")
     results = run_sim_to_real_analysis(
         SIM_LOG_FILE,
         REAL_LOG_FILE,
-        config=TrajectoryGapConfig(use_relative_deltas=False, trajectory_norm=1.0),
+        config=TrajectoryGapConfig(use_relative_deltas=False, trajectory_norm=0.2),
         do_visualize=True,
     )
     print(results)

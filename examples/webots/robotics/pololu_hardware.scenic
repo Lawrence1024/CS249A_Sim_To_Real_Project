@@ -17,9 +17,9 @@ workspace = Workspace(workspace_region)
 # Position at first waypoint to start the track properly
 # Height 0.01885m = body center height (5.8mm clearance + 13.05mm half-height)
 robot = new HardwarePololuRobot at (-0.32, -0.46, 0.01885), with behavior SquareTrackBehavior(
-    forwardSpeed=66.8493564427131, 
-    turnSpeed=28.3636499344142, 
-    waypointThreshold=0.10473361803941374,
+    forwardSpeed=68.62114418390924, 
+    turnSpeed=22.551390921291528, 
+    waypointThreshold=0.09143188983175649,
     headingOffset=0 deg
 )
 

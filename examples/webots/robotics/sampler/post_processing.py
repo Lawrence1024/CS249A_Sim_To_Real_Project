@@ -94,7 +94,7 @@ def compute_gap_metric(
     use_relative_deltas: bool = False,
     weights: Optional[Dict[str, float]] = None,
     trajectory_norm: float = DEFAULT_TRAJECTORY_NORM,
-    boundary_limit_dist: float = 0.2,
+    boundary_limit_dist: float = 0.25,
 ) -> Dict[str, Any]:
     """
     Compute sim-to-real gap metrics from two binary log files.
@@ -122,7 +122,7 @@ def compute_gap_metric(
     )
     raw_metrics = ga_v2.compute_sim_real_gap_v2(df_sim, df_real, config=cfg)
 
-    wp_gap = min(1.0, raw_metrics["waypoints_diff"] / float(len(ga_v2.WAYPOINTS)))
+    wp_gap = raw_metrics["waypoints_diff"] # / float(len(ga_v2.WAYPOINTS)))
     boundary_gap = 1.0 - raw_metrics["boundary_match"]
     norm_val = trajectory_norm if trajectory_norm > 0 else DEFAULT_TRAJECTORY_NORM
     raw_metrics["trajectory_gap"] = min(1.0, raw_metrics["trajectory_gap"] / norm_val) if norm_val else 0.0

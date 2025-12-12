@@ -554,7 +554,7 @@ if __name__ == "__main__":
         resume_from_checkpoint=True,
         start_sample_num=0,
         param_ranges=param_ranges,
-        reset_sampler=True,
-        random_seed=42  # Set to None for no seeding
+        reset_sampler=False,
+        random_seed=24  # Set to None for no seeding
     )
 

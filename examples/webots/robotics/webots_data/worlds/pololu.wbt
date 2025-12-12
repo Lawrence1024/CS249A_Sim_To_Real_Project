@@ -54,10 +54,13 @@ DEF GROUND Solid {
     # Rectangular track for new waypoints
     # Waypoints: (-0.32,-0.46), (-0.32,0.36), (-1.02,0.36), (-1.02,-0.46)
     # Track center: (-0.67, -0.05), width: 0.7m, height: 0.82m
+    # Boundaries are 25cm (0.25m) from centerline
+    # Lines are 0.02m (2cm) wide for better visibility
     
-    # Outer track lines - NORTH (red) - pushed very far out to y=0.76
+    # Outer track lines - NORTH (red) - connects corners at (-1.27,0.61) to (-0.07,0.61)
+    # Length: 1.2m (extends 0.25m beyond each waypoint corner)
     Transform {
-      translation -0.67 0.76 0.01
+      translation -0.67 0.61 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -66,14 +69,16 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 1.7 0.02 0.02
+            size 1.2 0.02 0.02
           }
         }
       ]
     }
-    # Outer track lines - EAST (red) - pushed very far out to x=0.08
+    # Outer track lines - EAST (red) - connects corners at (-0.07,0.61) to (-0.07,-0.71)
+    # Length: 1.32m (extends 0.25m beyond each waypoint corner)
     Transform {
-      translation 0.08 -0.05 0.01
+      translation -0.07 -0.05 0.01
+      rotation 0 0 1 1.5708
       children [
         Shape {
           appearance PBRAppearance {
@@ -82,14 +87,16 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 0.02 1.72 0.02
+            size 1.32 0.02 0.02
           }
         }
       ]
     }
-    # Outer track lines - SOUTH (red) - pushed very far out to y=-0.86
+    # Outer track lines - SOUTH (red) - connects corners at (-1.27,-0.71) to (-0.07,-0.71)
+    # Length: 1.2m (extends 0.25m beyond each waypoint corner)
     Transform {
-      translation -0.67 -0.86 0.01
+      translation -0.67 -0.71 0.01
+      rotation 0 0 1 3.14159
       children [
         Shape {
           appearance PBRAppearance {
@@ -98,14 +105,16 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 1.7 0.02 0.02
+            size 1.2 0.02 0.02
           }
         }
       ]
     }
-    # Outer track lines - WEST (red) - pushed very far out to x=-1.42
+    # Outer track lines - WEST (red) - connects corners at (-1.27,0.61) to (-1.27,-0.71)
+    # Length: 1.32m (extends 0.25m beyond each waypoint corner)
     Transform {
-      translation -1.42 -0.05 0.01
+      translation -1.27 -0.05 0.01
+      rotation 0 0 1 4.71239
       children [
         Shape {
           appearance PBRAppearance {
@@ -114,14 +123,15 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 0.02 1.72 0.02
+            size 1.32 0.02 0.02
           }
         }
       ]
     }
-    # Waypoint path lines - NORTH (blue) - pushed in to y=0.26
+    # Inner track lines - NORTH (blue) - connects corners at (-0.77,0.11) to (-0.57,0.11)
+    # Length: 0.2m (inset 0.25m from each waypoint corner)
     Transform {
-      translation -0.67 0.26 0.01
+      translation -0.67 0.11 0.01
       children [
         Shape {
           appearance PBRAppearance {
@@ -130,14 +140,16 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 0.5 0.02 0.02
+            size 0.2 0.02 0.02
           }
         }
       ]
     }
-    # Waypoint path lines - EAST (blue) - pushed in to x=-0.42
+    # Inner track lines - EAST (blue) - connects corners at (-0.57,0.11) to (-0.57,-0.21)
+    # Length: 0.32m (inset 0.25m from each waypoint corner)
     Transform {
-      translation -0.42 -0.05 0.01
+      translation -0.57 -0.05 0.01
+      rotation 0 0 1 1.5708
       children [
         Shape {
           appearance PBRAppearance {
@@ -146,14 +158,16 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 0.02 0.62 0.02
+            size 0.32 0.02 0.02
           }
         }
       ]
     }
-    # Waypoint path lines - SOUTH (blue) - pushed in to y=-0.36
+    # Inner track lines - SOUTH (blue) - connects corners at (-0.77,-0.21) to (-0.57,-0.21)
+    # Length: 0.2m (inset 0.25m from each waypoint corner)
     Transform {
-      translation -0.67 -0.36 0.01
+      translation -0.67 -0.21 0.01
+      rotation 0 0 1 3.14159
       children [
         Shape {
           appearance PBRAppearance {
@@ -162,14 +176,16 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 0.5 0.02 0.02
+            size 0.2 0.02 0.02
           }
         }
       ]
     }
-    # Waypoint path lines - WEST (blue) - pushed in to x=-0.92
+    # Inner track lines - WEST (blue) - connects corners at (-0.77,0.11) to (-0.77,-0.21)
+    # Length: 0.32m (inset 0.25m from each waypoint corner)
     Transform {
-      translation -0.92 -0.05 0.01
+      translation -0.77 -0.05 0.01
+      rotation 0 0 1 4.71239
       children [
         Shape {
           appearance PBRAppearance {
@@ -178,7 +194,7 @@ DEF GROUND Solid {
             metalness 0
           }
           geometry Box {
-            size 0.02 0.62 0.02
+            size 0.32 0.02 0.02
           }
         }
       ]
