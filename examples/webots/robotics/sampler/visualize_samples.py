@@ -17,6 +17,11 @@ from pathlib import Path
 # Add paths for imports
 ROOT = Path(__file__).resolve().parent
 sys.path.append(str(ROOT))
+sys.path.append(str(ROOT.parents[3]))
+
+# Import gap analyzer for computing metrics
+import gap_analyzer_v2 as ga_v2
+from gap_analyzer_v2 import TrajectoryGapConfig
 
 def load_sample_data(checkpoint_dir: str = None, log_file_path: str = "sample_data.pkl"):
     """
@@ -507,6 +512,321 @@ def visualize_samples_3d(
     print(f"  Not finished lap (False): {np.sum(~finished_laps)} ({100*np.sum(~finished_laps)/len(finished_laps):.1f}%)")
 
 
+def visualize_separate_metrics_3d(
+    checkpoint_dir: str = None,
+    log_file_path: str = "sample_data.pkl",
+    colormap: str = "RdYlGn_r",  # Red-Yellow-Green reversed (red = high gap, green = low gap)
+    figsize: tuple = (16, 12),  # Larger figure for 4 subplots
+    save_path: str = None,
+    trajectory_norm: float = 0.2,  # Same as DEFAULT_TRAJECTORY_NORM in post_processing
+    boundary_limit_dist: float = 0.25,
+    recompute_metrics: bool = True,  # If True, recompute from raw data; if False, use gap_metrics if available
+):
+    """
+    Create 4 synchronized 3D scatter plots showing separate metrics:
+    1. Combined Error (already computed)
+    2. Waypoint Gap (waypoints_diff, normalized)
+    3. Boundary Gap (1 - boundary_match)
+    4. Trajectory Gap (trajectory_gap, normalized)
+    
+    All 4 plots are synchronized - rotating one will rotate all others.
+    
+    Note: View synchronization works best when rotating slowly. The synchronization
+    is triggered on mouse movement during rotation (left mouse button held down).
+    
+    Args:
+        checkpoint_dir: Directory containing the pickle file
+        log_file_path: Name of the pickle file
+        colormap: Matplotlib colormap name
+        figsize: Figure size (width, height)
+        save_path: Optional path to save the figure
+        trajectory_norm: Normalization factor for trajectory gap (default: 0.2)
+        boundary_limit_dist: Boundary limit distance for violation checking
+        recompute_metrics: If True, recompute metrics from df_sim/df_real; if False, use gap_metrics if available
+    """
+    # Load data
+    all_samples = load_sample_data(checkpoint_dir, log_file_path)
+    
+    if len(all_samples) == 0:
+        print("No samples found in pickle file.")
+        return
+    
+    print(f"Loaded {len(all_samples)} samples")
+    if recompute_metrics:
+        print("Recomputing metrics from raw data (this may take a while)...")
+    
+    # Extract data and compute metrics
+    forward_speeds = []
+    turn_speeds = []
+    waypoint_thresholds = []
+    combined_errors = []
+    waypoint_gaps = []
+    boundary_gaps = []
+    trajectory_gaps = []
+    finished_laps = []
+    sample_nums = []
+    
+    config = TrajectoryGapConfig(
+        use_relative_deltas=False,
+        trajectory_norm=trajectory_norm,
+        boundary_limit_dist=boundary_limit_dist,
+    )
+    
+    for idx, sample in enumerate(all_samples):
+        params = sample.get('params', {})
+        df_sim = sample.get('df_sim')
+        df_real = sample.get('df_real')
+        gap_metrics = sample.get('gap_metrics', {})
+        
+        # Get parameters
+        fs = params.get('forwardSpeed')
+        ts = params.get('turnSpeed')
+        wt = params.get('waypointThreshold')
+        
+        if fs is None or ts is None or wt is None:
+            continue
+        
+        # Compute or retrieve metrics
+        if recompute_metrics and df_sim is not None and df_real is not None:
+            try:
+                raw_metrics = ga_v2.compute_sim_real_gap_v2(df_sim, df_real, config=config)
+                
+                wp_gap = raw_metrics["waypoints_diff"]
+                boundary_gap = 1.0 - raw_metrics["boundary_match"]
+                traj_gap_raw = raw_metrics["trajectory_gap"]
+                traj_gap = min(1.0, traj_gap_raw / trajectory_norm) if trajectory_norm > 0 else 0.0
+                
+                # Compute combined_error using the same logic as post_processing.py
+                # Use default weights from post_processing if available
+                DEFAULT_WEIGHTS = {
+                    "waypoint": 0.8,
+                    "boundary_wp_diff": 0.2,
+                    "boundary": 0.6,
+                    "trajectory": 0.4,
+                }
+                if wp_gap == 0:
+                    combined_error = min(
+                        1.0,
+                        DEFAULT_WEIGHTS.get("boundary", 0.0) * boundary_gap
+                        + DEFAULT_WEIGHTS.get("trajectory", 0.0) * traj_gap,
+                    )
+                else:
+                    combined_error = min(
+                        1.0,
+                        DEFAULT_WEIGHTS.get("waypoint", 0.0) * min(wp_gap / 4.0, 1.0)  # Normalize wp_gap to [0,1]
+                        + DEFAULT_WEIGHTS.get("boundary_wp_diff", 0.0) * boundary_gap
+                    )
+            except Exception as e:
+                print(f"Warning: Failed to compute metrics for sample {idx}: {e}")
+                continue
+        else:
+            # Use existing gap_metrics
+            if not gap_metrics:
+                continue
+            
+            combined_error = gap_metrics.get('combined_error')
+            wp_gap = gap_metrics.get('waypoints_diff', gap_metrics.get('normalized_waypoint_gap', 0))
+            boundary_match = gap_metrics.get('boundary_match', 1)
+            boundary_gap = 1.0 - boundary_match
+            traj_gap_raw = gap_metrics.get('trajectory_gap_raw', gap_metrics.get('normalized_trajectory_gap', 0))
+            traj_gap = gap_metrics.get('normalized_trajectory_gap', min(1.0, traj_gap_raw / trajectory_norm) if trajectory_norm > 0 else 0.0)
+        
+        # Only include samples with all required data
+        if (combined_error is not None and wp_gap is not None and 
+            boundary_gap is not None and traj_gap is not None):
+            forward_speeds.append(fs)
+            turn_speeds.append(ts)
+            waypoint_thresholds.append(wt)
+            combined_errors.append(combined_error)
+            waypoint_gaps.append(wp_gap)
+            boundary_gaps.append(boundary_gap)
+            trajectory_gaps.append(traj_gap)
+            finished_laps.append(gap_metrics.get('finished_lap', False))
+            sample_nums.append(sample.get('sample_num', 0))
+    
+    if len(forward_speeds) == 0:
+        print("No samples with complete metric data found.")
+        return
+    
+    print(f"Processing {len(forward_speeds)} samples with complete metrics")
+    
+    # Convert to numpy arrays
+    forward_speeds = np.array(forward_speeds)
+    turn_speeds = np.array(turn_speeds)
+    waypoint_thresholds = np.array(waypoint_thresholds)
+    combined_errors = np.array(combined_errors)
+    waypoint_gaps = np.array(waypoint_gaps)
+    boundary_gaps = np.array(boundary_gaps)
+    trajectory_gaps = np.array(trajectory_gaps)
+    finished_laps = np.array(finished_laps)
+    
+    
+    # Split data into finished_lap = True and False groups
+    finished_mask = finished_laps == True
+    not_finished_mask = ~finished_mask
+    
+    # Data for finished_lap = True (circles)
+    fs_finished = forward_speeds[finished_mask]
+    ts_finished = turn_speeds[finished_mask]
+    wt_finished = waypoint_thresholds[finished_mask]
+    
+    # Data for finished_lap = False (squares)
+    fs_not_finished = forward_speeds[not_finished_mask]
+    ts_not_finished = turn_speeds[not_finished_mask]
+    wt_not_finished = waypoint_thresholds[not_finished_mask]
+    
+    # Create figure with 2x2 subplots
+    fig = plt.figure(figsize=figsize)
+    axes = []
+    
+    # Create 4 subplots
+    ax1 = fig.add_subplot(2, 2, 1, projection='3d')
+    ax2 = fig.add_subplot(2, 2, 2, projection='3d')
+    ax3 = fig.add_subplot(2, 2, 3, projection='3d')
+    ax4 = fig.add_subplot(2, 2, 4, projection='3d')
+    axes = [ax1, ax2, ax3, ax4]
+    
+    # Metric data and titles
+    metric_data = [
+        (combined_errors, "Combined Error", (0, 1)),
+        (waypoint_gaps, "Waypoint Gap", (0, waypoint_gaps.max())),
+        (boundary_gaps, "Boundary Gap", (0, 1)),
+        (trajectory_gaps, "Trajectory Gap (normalized)", (0, 1)),
+    ]
+    
+    scatter_objects = []
+    
+    # Plot each metric
+    for ax, (metric_values, title, vrange) in zip(axes, metric_data):
+        metric_finished = metric_values[finished_mask]
+        metric_not_finished = metric_values[not_finished_mask]
+        
+        scatters = []
+        
+        # Plot finished_lap = True points (circles)
+        if len(fs_finished) > 0:
+            scatter_finished = ax.scatter(
+                fs_finished,
+                ts_finished,
+                wt_finished,
+                c=metric_finished,
+                cmap=colormap,
+                vmin=vrange[0],
+                vmax=vrange[1],
+                s=100,
+                alpha=0.7,
+                edgecolors='black',
+                linewidths=0.5,
+                marker='o',
+                label='Finished Lap'
+            )
+            scatters.append(scatter_finished)
+        
+        # Plot finished_lap = False points (squares)
+        if len(fs_not_finished) > 0:
+            scatter_not_finished = ax.scatter(
+                fs_not_finished,
+                ts_not_finished,
+                wt_not_finished,
+                c=metric_not_finished,
+                cmap=colormap,
+                vmin=vrange[0],
+                vmax=vrange[1],
+                s=100,
+                alpha=0.7,
+                edgecolors='black',
+                linewidths=0.5,
+                marker='s',
+                label='Not Finished Lap'
+            )
+            scatters.append(scatter_not_finished)
+        
+        scatter_objects.append(scatters[0] if scatters else None)
+        
+        ax.set_xlabel('forwardSpeed', fontsize=10, fontweight='bold')
+        ax.set_ylabel('turnSpeed', fontsize=10, fontweight='bold')
+        ax.set_zlabel('waypointThreshold', fontsize=10, fontweight='bold')
+        ax.set_title(title, fontsize=12, fontweight='bold')
+        
+        # Add colorbar
+        if scatters:
+            cbar = plt.colorbar(scatters[0], ax=ax, pad=0.1, shrink=0.8)
+            cbar.set_label(title, rotation=270, labelpad=15, fontsize=9)
+        
+        # Add legend (only on first subplot to avoid clutter)
+        if ax == ax1:
+            ax.legend(loc='upper right', fontsize=8, framealpha=0.9)
+    
+    # Set initial view angles for all axes
+    initial_elev = 20
+    initial_azim = 45
+    
+    # Synchronize views - when one axis is rotated, update all others
+    # Store the initial view angles
+    shared_view = {'elev': initial_elev, 'azim': initial_azim, 'source': None}
+    
+    def on_mouse_move(event):
+        """Update shared view angles when mouse moves during rotation."""
+        if event.inaxes in axes and event.button == 1:  # Left mouse button
+            source_ax = event.inaxes
+            shared_view['source'] = source_ax
+            shared_view['elev'] = source_ax.elev
+            shared_view['azim'] = source_ax.azim
+            
+            # Update all other axes to match
+            for ax in axes:
+                if ax != source_ax:
+                    ax.view_init(elev=shared_view['elev'], azim=shared_view['azim'])
+            fig.canvas.draw_idle()
+    
+    def on_button_release(event):
+        """Finalize view synchronization on button release."""
+        if event.inaxes in axes:
+            source_ax = event.inaxes
+            shared_view['elev'] = source_ax.elev
+            shared_view['azim'] = source_ax.azim
+            
+            # Update all other axes to match
+            for ax in axes:
+                if ax != source_ax:
+                    ax.view_init(elev=shared_view['elev'], azim=shared_view['azim'])
+            fig.canvas.draw_idle()
+    
+    # Connect events to figure (not individual axes) for better synchronization
+    fig.canvas.mpl_connect('motion_notify_event', on_mouse_move)
+    fig.canvas.mpl_connect('button_release_event', on_button_release)
+    
+    # Set initial view for all axes (same as first axis)
+    for ax in axes:
+        ax.view_init(elev=initial_elev, azim=initial_azim)
+    
+    # Add overall title
+    fig.suptitle(
+        f'Separate Metrics Visualization ({len(forward_speeds)} samples)\n'
+        f'Rotate any plot to synchronize all views',
+        fontsize=14,
+        fontweight='bold'
+    )
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Figure saved to: {save_path}")
+    
+    # Print summary statistics
+    print(f"\n{'='*60}")
+    print("Metric Statistics:")
+    print(f"{'='*60}")
+    print(f"Total samples: {len(forward_speeds)}")
+    print(f"\nCombined Error: min={combined_errors.min():.4f}, max={combined_errors.max():.4f}, mean={combined_errors.mean():.4f}")
+    print(f"Waypoint Gap: min={waypoint_gaps.min():.0f}, max={waypoint_gaps.max():.0f}, mean={waypoint_gaps.mean():.4f}")
+    print(f"Boundary Gap: min={boundary_gaps.min():.4f}, max={boundary_gaps.max():.4f}, mean={boundary_gaps.mean():.4f}")
+    print(f"Trajectory Gap: min={trajectory_gaps.min():.4f}, max={trajectory_gaps.max():.4f}, mean={trajectory_gaps.mean():.4f}")
+    
+    plt.show()
+
+
 def visualize_samples_2d_projections(
     checkpoint_dir: str = None,
     log_file_path: str = "sample_data.pkl",
@@ -769,15 +1089,32 @@ if __name__ == "__main__":
         help='Show 2D projections instead of 3D plot'
     )
     parser.add_argument(
+        '--separate-metrics',
+        action='store_true',
+        help='Show 4 separate 3D plots for different metrics (combined, waypoint, boundary, trajectory)'
+    )
+    parser.add_argument(
         '--save',
         type=str,
         default=None,
         help='Path to save the figure (optional)'
     )
+    parser.add_argument(
+        '--no-recompute',
+        action='store_true',
+        help='Use existing gap_metrics instead of recomputing from raw data (only for --separate-metrics)'
+    )
     
     args = parser.parse_args()
     
-    if args.projections:
+    if args.separate_metrics:
+        visualize_separate_metrics_3d(
+            checkpoint_dir=args.checkpoint_dir,
+            colormap=args.colormap,
+            save_path=args.save,
+            recompute_metrics=not args.no_recompute
+        )
+    elif args.projections:
         visualize_samples_2d_projections(
             checkpoint_dir=args.checkpoint_dir,
             gap_threshold=args.threshold,
