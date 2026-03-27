@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+<robot name="pololu_3pi_2040_simple_v2">
+
+  <!-- ========= Materials ========= -->
+  <material name="pcb_green">
+    <color rgba="0.10 0.45 0.12 1.0"/>
+  </material>
+
+  <material name="electronics_dark">
+    <color rgba="0.18 0.18 0.18 1.0"/>
+  </material>
+
+  <material name="screen_purple">
+    <color rgba="0.45 0.10 0.65 1.0"/>
+  </material>
+
+  <material name="wheel_black">
+    <color rgba="0.06 0.06 0.06 1.0"/>
+  </material>
+
+  <material name="caster_gray">
+    <color rgba="0.78 0.78 0.78 1.0"/>
+  </material>
+
+  <!--
+    Frame choice:
+    base_link origin is centered between the wheels, at wheel axle height.
+    x = forward, y = left, z = up
+  -->
+
+  <!-- ========= Base / board ========= -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0.008" rpy="0 0 0"/>
+      <mass value="0.085"/>
+      <inertia ixx="1.4e-4" ixy="0" ixz="0" iyy="1.2e-4" iyz="0" izz="2.0e-4"/>
+    </inertial>
+
+    <!-- Main PCB -->
+    <visual>
+      <origin xyz="0 0 0.008" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.0912 0.066 0.003"/>
+      </geometry>
+      <material name="pcb_green"/>
+    </visual>
+
+    <!-- Small central electronics block to make the robot easier to see -->
+    <visual>
+      <origin xyz="0 0 0.014" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.0354 0.0335 0.004"/>
+      </geometry>
+      <material name="electronics_dark"/>
+    </visual>
+
+    <!-- Small "screen" block -->
+    <visual>
+      <origin xyz="0.006 0 0.0175" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.020 0.026 0.002"/>
+      </geometry>
+      <material name="screen_purple"/>
+    </visual>
+
+    <!-- Keep collision simple and robust -->
+    <collision>
+      <origin xyz="0 0 0.008" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.085 0.060 0.012"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========= Left wheel ========= -->
+  <link name="left_wheel">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.010"/>
+      <inertia ixx="1.0e-5" ixy="0" ixz="0" iyy="1.0e-5" iyz="0" izz="1.0e-5"/>
+    </inertial>
+
+    <!-- URDF cylinder axis is local z, so rotate to align wheel axle with y -->
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+      <geometry>
+        <cylinder radius="0.016" length="0.010"/>
+      </geometry>
+      <material name="wheel_black"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+      <geometry>
+        <cylinder radius="0.016" length="0.010"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========= Right wheel ========= -->
+  <link name="right_wheel">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.010"/>
+      <inertia ixx="1.0e-5" ixy="0" ixz="0" iyy="1.0e-5" iyz="0" izz="1.0e-5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+      <geometry>
+        <cylinder radius="0.016" length="0.010"/>
+      </geometry>
+      <material name="wheel_black"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+      <geometry>
+        <cylinder radius="0.016" length="0.010"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========= Rear support sphere ========= -->
+  <link name="rear_caster">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.002"/>
+      <inertia ixx="1.0e-6" ixy="0" ixz="0" iyy="1.0e-6" iyz="0" izz="1.0e-6"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.00635"/>
+      </geometry>
+      <material name="caster_gray"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.00635"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========= Joints ========= -->
+
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="left_wheel"/>
+    <origin xyz="0 0.032 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="right_wheel"/>
+    <origin xyz="0 -0.032 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <!-- Rear support ball slightly behind center -->
+  <joint name="rear_caster_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="rear_caster"/>
+    <origin xyz="-0.030 0 -0.00965" rpy="0 0 0"/>
+  </joint>
+
+</robot>
