@@ -1,0 +1,39 @@
+Sample 10/100
+
+Parameters used:
+  forwardSpeed: 32.5689
+  turnSpeed: 39.2293
+  waypointThreshold: 0.1049
+
+============================================================
+Gap Metrics Results
+============================================================
+
+2025-12-11 15:17:33,557 - INFO - Gap metrics v2 -> wp_diff: 0 | boundary_match: 1 | traj_gap: 0.1784 (absolute) | combined_error: 0.0714
+
+Log files used:
+  sim : C:\Users\bklfh\Documents\Scenic\Scenic\examples\webots\robotics\log\fast_log_1765494996.bin
+  real: C:\Users\bklfh\Documents\Scenic\Scenic\examples\webots\robotics\log\fast_log_1765495025.bin
+
+Computed sim-to-real gap metric:
+  combined_error: 0.0714
+
+Waypoint metrics:
+  waypoints_hit_sim: 5
+  waypoints_hit_real: 5
+  waypoints_diff: 0
+  normalized_waypoint_gap: 0.0000
+
+Boundary metrics:
+  boundary_violation_sim: False
+  boundary_violation_real: False
+  boundary_match: 1
+  normalized_boundary_gap: 0.0000
+
+Trajectory metrics:
+  trajectory_gap_raw: 0.1784
+  normalized_trajectory_gap: 0.1784
+  trajectory_mode: absolute
+  trajectory_segments: 472
+  trajectory_aligned_points: 473
+  trajectory_duration: 15408972300.00s

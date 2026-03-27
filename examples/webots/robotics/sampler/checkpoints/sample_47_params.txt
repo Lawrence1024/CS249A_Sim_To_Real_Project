@@ -1,0 +1,6 @@
+Sample 47/100
+
+Parameters used:
+  forwardSpeed: 49.3331
+  turnSpeed: 33.3200
+  waypointThreshold: 0.0868

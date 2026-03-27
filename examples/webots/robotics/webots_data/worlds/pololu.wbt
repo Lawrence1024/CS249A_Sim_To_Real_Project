@@ -1,0 +1,429 @@
+#VRML_SIM R2023a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+IMPORTABLE EXTERNPROTO "../protos/ScenicObject.proto"
+IMPORTABLE EXTERNPROTO "../protos/ScenicObjectWithPhysics.proto"
+
+WorldInfo {
+  gravity 9.81
+  basicTimeStep 16
+  contactProperties [
+    ContactProperties {
+      material1 "wheel_material"
+      material2 "ground_material"
+      coulombFriction 0.8
+      bounce 0
+    }
+  ]
+}
+Viewpoint {
+  orientation -0.19729161510865992 0.07408415124219735 0.977541588446517 2.4380019050245862
+  position 2 2 2
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+Robot {
+  name "Supervisor"
+  controller "scenic_supervisor"
+  customData "../../../pololu.scenic"
+  supervisor TRUE
+  children [
+    Emitter {
+      channel 1
+    }
+    Receiver {
+      channel 1
+    }
+  ]
+}
+DEF GROUND Solid {
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.8 0.8
+        roughness 0.5
+        metalness 0
+      }
+      geometry DEF GROUND_PLANE Plane {
+        size 3 3
+      }
+    }
+    # Rectangular track for new waypoints
+    # Waypoints: (-0.32,-0.46), (-0.32,0.36), (-1.02,0.36), (-1.02,-0.46)
+    # Track center: (-0.67, -0.05), width: 0.7m, height: 0.82m
+    # Boundaries are 25cm (0.25m) from centerline
+    # Lines are 0.02m (2cm) wide for better visibility
+    
+    # Outer track lines - NORTH (red) - connects corners at (-1.27,0.61) to (-0.07,0.61)
+    # Length: 1.2m (extends 0.25m beyond each waypoint corner)
+    Transform {
+      translation -0.67 0.61 0.01
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0 0
+            roughness 0.3
+            metalness 0
+          }
+          geometry Box {
+            size 1.2 0.02 0.02
+          }
+        }
+      ]
+    }
+    # Outer track lines - EAST (red) - connects corners at (-0.07,0.61) to (-0.07,-0.71)
+    # Length: 1.32m (extends 0.25m beyond each waypoint corner)
+    Transform {
+      translation -0.07 -0.05 0.01
+      rotation 0 0 1 1.5708
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0 0
+            roughness 0.3
+            metalness 0
+          }
+          geometry Box {
+            size 1.32 0.02 0.02
+          }
+        }
+      ]
+    }
+    # Outer track lines - SOUTH (red) - connects corners at (-1.27,-0.71) to (-0.07,-0.71)
+    # Length: 1.2m (extends 0.25m beyond each waypoint corner)
+    Transform {
+      translation -0.67 -0.71 0.01
+      rotation 0 0 1 3.14159
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0 0
+            roughness 0.3
+            metalness 0
+          }
+          geometry Box {
+            size 1.2 0.02 0.02
+          }
+        }
+      ]
+    }
+    # Outer track lines - WEST (red) - connects corners at (-1.27,0.61) to (-1.27,-0.71)
+    # Length: 1.32m (extends 0.25m beyond each waypoint corner)
+    Transform {
+      translation -1.27 -0.05 0.01
+      rotation 0 0 1 4.71239
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0 0
+            roughness 0.3
+            metalness 0
+          }
+          geometry Box {
+            size 1.32 0.02 0.02
+          }
+        }
+      ]
+    }
+    # Inner track lines - NORTH (blue) - connects corners at (-0.77,0.11) to (-0.57,0.11)
+    # Length: 0.2m (inset 0.25m from each waypoint corner)
+    Transform {
+      translation -0.67 0.11 0.01
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0 0 1
+            roughness 0.3
+            metalness 0
+          }
+          geometry Box {
+            size 0.2 0.02 0.02
+          }
+        }
+      ]
+    }
+    # Inner track lines - EAST (blue) - connects corners at (-0.57,0.11) to (-0.57,-0.21)
+    # Length: 0.32m (inset 0.25m from each waypoint corner)
+    Transform {
+      translation -0.57 -0.05 0.01
+      rotation 0 0 1 1.5708
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0 0 1
+            roughness 0.3
+            metalness 0
+          }
+          geometry Box {
+            size 0.32 0.02 0.02
+          }
+        }
+      ]
+    }
+    # Inner track lines - SOUTH (blue) - connects corners at (-0.77,-0.21) to (-0.57,-0.21)
+    # Length: 0.2m (inset 0.25m from each waypoint corner)
+    Transform {
+      translation -0.67 -0.21 0.01
+      rotation 0 0 1 3.14159
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0 0 1
+            roughness 0.3
+            metalness 0
+          }
+          geometry Box {
+            size 0.2 0.02 0.02
+          }
+        }
+      ]
+    }
+    # Inner track lines - WEST (blue) - connects corners at (-0.77,0.11) to (-0.77,-0.21)
+    # Length: 0.32m (inset 0.25m from each waypoint corner)
+    Transform {
+      translation -0.77 -0.05 0.01
+      rotation 0 0 1 4.71239
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0 0 1
+            roughness 0.3
+            metalness 0
+          }
+          geometry Box {
+            size 0.32 0.02 0.02
+          }
+        }
+      ]
+    }
+  ]
+  boundingObject USE GROUND_PLANE
+  locked TRUE
+  contactMaterial "ground_material"
+}
+# Waypoint markers (green spheres at each waypoint)
+# WP0: (-0.32, -0.46, 0.03)
+Transform {
+  translation -0.32 -0.46 0.03
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 0.3
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.03
+      }
+    }
+  ]
+}
+# WP1: (-0.32, 0.36, 0.03)
+Transform {
+  translation -0.32 0.36 0.03
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 0.3
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.03
+      }
+    }
+  ]
+}
+# WP2: (-1.02, 0.36, 0.03)
+Transform {
+  translation -1.02 0.36 0.03
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 0.3
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.03
+      }
+    }
+  ]
+}
+# WP3: (-1.02, -0.46, 0.03)
+Transform {
+  translation -1.02 -0.46 0.03
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 0.3
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.03
+      }
+    }
+  ]
+}
+DEF POLOLU_ROBOT Robot {
+  translation -0.32 -0.46 0.01885
+  rotation 0 0 1 0
+  controller "simple_robot_controller"
+  boundingObject Box {
+    size 0.0912 0.066 0.0261
+  }
+  physics Physics {
+    density -1
+    mass 0.15
+    centerOfMass [ 0 0 0 ]
+  }
+  children [
+    # Main body box (91.2mm length × 66mm width × 26.1mm height)
+    # Ground clearance: 5.8mm
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.2 0.2 0.8
+        roughness 0.5
+        metalness 0
+      }
+      geometry Box {
+        size 0.0912 0.066 0.0261
+      }
+    }
+    # Left wheel (32mm diameter, 6.8mm width)
+    # Positioned 44.4mm from front (1.2mm from center), 15mm gap + wheel half-width from body edge
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        axis 0 1 0
+        anchor 0.0012 0.0514 -0.00285
+      }
+      device [
+        RotationalMotor {
+          name "leftMotor"
+          maxVelocity 105
+        }
+      ]
+      endPoint Solid {
+        translation 0.0012 0.0514 -0.00285
+        name "leftWheel"
+        children [
+          Transform {
+            rotation 1 0 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 1 1 0
+                  roughness 1.0
+                }
+                geometry Cylinder {
+                  height 0.0068
+                  radius 0.016
+                }
+              }
+            ]
+          }
+        ]
+        boundingObject Transform {
+          rotation 1 0 0 1.5708
+          children [
+            Cylinder {
+              height 0.0068
+              radius 0.016
+            }
+          ]
+        }
+        physics Physics {
+          density -1
+          mass 0.01
+        }
+        contactMaterial "wheel_material"
+      }
+    }
+    # Right wheel (32mm diameter, 6.8mm width)
+    # Positioned 44.4mm from front (1.2mm from center), 15mm gap + wheel half-width from body edge
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        axis 0 1 0
+        anchor 0.0012 -0.0514 -0.00285
+      }
+      device [
+        RotationalMotor {
+          name "rightMotor"
+          maxVelocity 105
+        }
+      ]
+      endPoint Solid {
+        translation 0.0012 -0.0514 -0.00285
+        name "rightWheel"
+        children [
+          Transform {
+            rotation 1 0 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 1 1 0
+                  roughness 1.0
+                }
+                geometry Cylinder {
+                  height 0.0068
+                  radius 0.016
+                }
+              }
+            ]
+          }
+        ]
+        boundingObject Transform {
+          rotation 1 0 0 1.5708
+          children [
+            Cylinder {
+              height 0.0068
+              radius 0.016
+            }
+          ]
+        }
+        physics Physics {
+          density -1
+          mass 0.01
+        }
+        contactMaterial "wheel_material"
+      }
+    }
+    # Ball caster at back (12.7mm diameter)
+    # Positioned at back of robot (-45.6mm), touching ground
+    Solid {
+      translation -0.0456 0 -0.0125
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            roughness 0.2
+            metalness 0.5
+          }
+          geometry Sphere {
+            radius 0.00635
+          }
+        }
+      ]
+      boundingObject Sphere {
+        radius 0.00635
+      }
+      physics Physics {
+        density -1
+        mass 0.002
+      }
+      name "ballCaster"
+    }
+    # Communication devices for Scenic control
+    Emitter {
+      channel 1
+    }
+    Receiver {
+      channel 1
+    }
+  ]
+}
+

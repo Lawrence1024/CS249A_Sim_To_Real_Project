@@ -139,6 +139,7 @@ class WebotsSimulation(Simulation):
             raise SimulationCreationError(f"Webots object {name} does not exist in world")
         obj.webotsObject = webotsObj
         obj.webotsName = name
+        obj.webotsSupervisor = self.supervisor
 
         # Set the fields of the Webots object:
 
@@ -205,7 +206,14 @@ class WebotsSimulation(Simulation):
             elif obj.resetController:
                 webotsObj.restartController()
 
+        # Robot-specific fields
+        self._setupRobotFields(obj, webotsObj)
+
     def step(self):
+        # Collect and execute actions from behaviors
+        self._collectAndExecuteActions()
+        
+        # Step the simulation
         ms = round(1000 * self.timestep)
         self.supervisor.step(ms)
 
@@ -257,6 +265,25 @@ class WebotsSimulation(Simulation):
     def _getAdhocObjectName(self, i: int) -> str:
         return f"SCENIC_ADHOC_{i}"
 
+    def _setupRobotFields(self, obj, webotsObj):
+        """Set up robot-specific fields in Webots object."""
+        # Motor control fields
+        robotFields = ['leftMotorSpeed', 'rightMotorSpeed', 'servoAngle', 'ledState']
+        for fieldName in robotFields:
+            if hasattr(obj, fieldName):
+                field = getFieldSafe(webotsObj, fieldName)
+                if field:
+                    field.setSFFloat(float(getattr(obj, fieldName)))
+
+    def _collectAndExecuteActions(self):
+        """Collect and execute actions from all objects with behaviors."""
+        for obj in self.scene.objects:
+            if hasattr(obj, '_currentBehavior') and obj._currentBehavior:
+                # Collect actions from the behavior
+                if hasattr(obj._currentBehavior, '_collectActions'):
+                    actions = obj._currentBehavior._collectActions()
+                    for action in actions:
+                        action.applyTo(obj, self)
 
 def getFieldSafe(webotsObject, fieldName):
     """Get field from webots object. Return null if no such field exists.
